@@ -5,6 +5,7 @@ import { wuzzufConfig } from "./sites/wuzzuf/index.js";
 import { modelConfigs, ModelConfigKey, shared } from "./config.js";
 import { compareGolden, printGoldenResults } from "./evals/golden.js";
 import { runStructuralHeuristics, logHeuristicResults } from "./evals/structural.js";
+import { writeEvalReport } from "./evals/report-writer.js";
 import { EvaluatedJob, JobStatus } from "./types/evaluated-job.js";
 import { WuzzufJob } from "./types/WuzzufJob.js";
 
@@ -16,7 +17,8 @@ if (!modelArg || !(modelArg in modelConfigs)) {
     process.exit(1);
 }
 
-const modelConfig = modelConfigs[modelArg];
+const validModelKey = modelArg;
+const modelConfig = modelConfigs[validModelKey];
 
 async function main() {
     // Extract just the jobs from the golden dataset (no labels)
@@ -59,6 +61,16 @@ async function main() {
     // Run golden comparison
     const comparison = compareGolden(goldenDataset, aiOutput);
     printGoldenResults(comparison);
+
+    // Write report to eval-results/
+    const reportPath = writeEvalReport({
+        modelKey: validModelKey,
+        modelConfig,
+        comparison,
+        heuristics: heuristicResults,
+        goldenDataset,
+    });
+    console.log(`\n📄 Report saved: ${reportPath}`);
 
     // Exit with code based on accuracy threshold
     const threshold = 0.8;

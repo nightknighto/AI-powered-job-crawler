@@ -20,19 +20,19 @@ export const modelConfigs = {
         temperature: 0.2,
         think: false,
     },
-    gemmaE4b: {
+    gemma4: {
         model: "gemma4:e4b",
         temperature: 0.2,
         think: false,
     },
-    gemmaE4bThinking: {
+    gemma4Thinking: {
         model: "gemma4:e4b",
         temperature: 0.2,
         think: true,
     },
 } as const satisfies Record<string, ModelConfig>;
 
-/** Union of all configured model keys (e.g. `'qwenReason' | 'qwenSmall' | 'gemmaE4b'`). */
+/** Union of all configured model keys (e.g. `'qwenReason' | 'qwenSmall' | 'gemma4'`). */
 export type ModelConfigKey = keyof typeof modelConfigs;
 
 /** Shared settings used across the pipeline (keep-alive, display colors, etc.). */

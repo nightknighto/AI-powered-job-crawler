@@ -1,2 +1,4 @@
 node_modules
 storage
+eval-results/
+.vscode

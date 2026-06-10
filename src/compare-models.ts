@@ -3,7 +3,9 @@ import { z } from "zod";
 import { goldenDataset } from "./sites/wuzzuf/evals/golden-dataset.js";
 import { wuzzufConfig } from "./sites/wuzzuf/index.js";
 import { modelConfigs, ModelConfigKey, shared } from "./config.js";
-import { compareGolden } from "./evals/golden.js";
+import { compareGolden, GoldenComparisonResult } from "./evals/golden.js";
+import { runStructuralHeuristics, HeuristicResult } from "./evals/structural.js";
+import { writeCompareReport, CompareModelDetail } from "./evals/report-writer.js";
 import { EvaluatedJob } from "./types/evaluated-job.js";
 import { WuzzufJob } from "./types/WuzzufJob.js";
 
@@ -17,6 +19,9 @@ interface ModelResult {
     correct: number;
     total: number;
     errors: string[];
+    comparison: GoldenComparisonResult;
+    heuristics: HeuristicResult[];
+    aiOutputJobTitles: string[];
 }
 
 async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
@@ -44,10 +49,13 @@ async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
 
     const comparison = compareGolden(goldenDataset, aiOutput);
 
+    const heuristics = runStructuralHeuristics(jobs, aiOutput);
+
     const errors: string[] = [];
     for (const job of comparison.perJob) {
         if (!job.statusMatch) {
-            errors.push(`  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${job.actualStatus}`);
+            const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;
+            errors.push(`  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`);
         }
     }
 
@@ -61,6 +69,9 @@ async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
         correct: comparison.summary.correct,
         total: comparison.summary.total,
         errors,
+        comparison,
+        heuristics,
+        aiOutputJobTitles: aiOutput.map((e) => e.job.jobTitle),
     };
 }
 
@@ -122,6 +133,23 @@ async function main() {
     }
 
     printComparison(results);
+
+    // Write report to eval-results/
+    const details: CompareModelDetail[] = results.map((r) => ({
+        modelKey: r.modelKey,
+        modelName: r.modelName,
+        accuracy: r.accuracy,
+        passF1: r.passF1,
+        failF1: r.failF1,
+        potentialMatchF1: r.potentialMatchF1,
+        correct: r.correct,
+        total: r.total,
+        comparison: r.comparison,
+        heuristics: r.heuristics,
+        aiOutputJobs: r.aiOutputJobTitles,
+    }));
+    const reportPath = writeCompareReport({ models: details, goldenDataset });
+    console.log(`\n📄 Report saved: ${reportPath}`);
 }
 
 main().catch((err) => {

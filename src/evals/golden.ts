@@ -11,6 +11,8 @@ export interface PerJobResult {
     expectedStatus: JobStatus;
     actualStatus: JobStatus;
     statusMatch: boolean;
+    /** Whether the AI output did not include this job at all (silently dropped). */
+    dropped: boolean;
     expectedKeywords: string[];
     matchedKeywords: string[];
     unmatchedKeywords: string[];
@@ -65,6 +67,9 @@ export function compareGolden<T extends BaseJob>(
         const reasonText = aiEntry?.reason?.join(" ").toLowerCase() ?? "";
         const expectedStatus = golden.expectedStatus;
 
+        // A dropped job is always a mismatch — the AI didn't evaluate it at all
+        const dropped = !aiEntry;
+
         // Check keyword coverage
         const matchedKeywords: string[] = [];
         const unmatchedKeywords: string[] = [];
@@ -84,7 +89,8 @@ export function compareGolden<T extends BaseJob>(
             jobURL: golden.job.jobURL,
             expectedStatus,
             actualStatus,
-            statusMatch: expectedStatus === actualStatus,
+            statusMatch: !dropped && expectedStatus === actualStatus,
+            dropped,
             expectedKeywords: golden.expectedReasonKeywords,
             matchedKeywords,
             unmatchedKeywords,
@@ -140,9 +146,14 @@ export function printGoldenResults(result: GoldenComparisonResult): void {
     console.log("── Per-Job Results ──\n");
     for (const job of result.perJob) {
         const statusIcon = job.statusMatch ? "✅" : "❌";
-        console.log(`${statusIcon} #${job.jobIndex} ${job.jobTitle}`);
-        console.log(`   Expected: ${job.expectedStatus} | Got: ${job.actualStatus}`);
+        const droppedTag = job.dropped ? " [DROPPED]" : "";
+        const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;
+        console.log(`${statusIcon} #${job.jobIndex} ${job.jobTitle}${droppedTag}`);
+        console.log(`   Expected: ${job.expectedStatus} | Got: ${actualDisplay}`);
 
+        if (job.dropped) {
+            console.log(`   ⚠️  Job was not returned by the AI`);
+        }
         if (job.unmatchedKeywords.length > 0) {
             console.log(`   ⚠️  Unmatched keywords: ${job.unmatchedKeywords.join(", ")}`);
         }

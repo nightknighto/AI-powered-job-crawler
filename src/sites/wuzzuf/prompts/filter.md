@@ -23,10 +23,9 @@ Analyze both the top-level metadata and the complete text details provided insid
 * **Title Filter:** Reject if the title contains any of these keywords (case-insensitive): "Senior" (unless the text explicitly says 2-3 years is acceptable), "Lead", "Manager", "Head of", "Director", "Principal", "Staff".  
 * **Internship Filter:** Reject any job tagged as "Internship" or with "Intern" in the title or description text.  
 * **Tech Stack Filter:** Reject if the primary stack is non-JS/TS (e.g., dominated by PHP, Laravel, Python, Django, .NET, C#, Java, Spring, Kotlin, Ruby, Rails, or mobile-first Flutter/React Native). Keep if the primary stack is JS/TS-focused (JavaScript, TypeScript, Node.js, React, Next.js, Vue, Angular, NestJS, Express, etc.).  
-* **Depth & Experience Filter:** Reject if the full text in "jobDetails" reveals:  
-  * Actual experience requirements are higher than acceptable (>3 years or strict senior/management expectations).
-  * The company requires full on-site work despite an initial remote/hybrid tag.
-  * The company requires hybrid work and the location is not in Egypt (unless the text explicitly states remote work is possible from Egypt).
+* **Depth & Experience Filter:** Reject if the full text in "jobDetails" reveals:
+  * **Experience requirement is 4+ years or more** (3 years or less is acceptable; 4+ years is rejected).
+  * **The job requires fully on-site work** (fully on-site is always rejected; hybrid work in Egypt is acceptable even with office days; hybrid work in non-Egypt locations is rejected unless the text explicitly states remote work is possible from Egypt).
   * The primary daily stack is actually non-JS/TS.
   * The role is not a development role (e.g., product manager, designer, QA, data analyst) even if it mentions JS/TS as a plus.
 
@@ -34,6 +33,7 @@ Analyze both the top-level metadata and the complete text details provided insid
 
 ### **Very Important Notes:**
 
+* **You MUST return ALL input jobs in your output.** Do not drop, skip, or omit any job — every job in the input must appear exactly once in the output array. Rejected jobs should still be included with status "FAIL" and the reason for rejection.
 * Type **"N/A"** for any data points that you cannot extract or find. Do not hallucinate or make up data.  
 * Run through all steps completely in this single turn.
 * Your final output MUST be a valid JSON array conforming to the provided schema. Do not output markdown or any other format.
