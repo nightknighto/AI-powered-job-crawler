@@ -1,0 +1,32 @@
+{
+  "name": "job-searches",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "eval": "tsx src/eval.ts",
+    "compare": "tsx src/compare-models.ts",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.0",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "cheerio": "^1.2.0",
+    "crawlee": "^3.17.0",
+    "marked": "^12.0.2",
+    "marked-terminal": "^7.3.0",
+    "ollama": "^0.6.3",
+    "playwright": "^1.60.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/marked-terminal": "^6.1.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
