@@ -14,10 +14,12 @@ export interface SiteConfig<T extends BaseJob = BaseJob> {
     evaluationSchema: z.ZodArray<z.ZodObject<any>>;
     /** Zod schema for a single raw job (used for type inference) */
     jobSchema: z.ZodType<T>;
-    /** Filter and report prompt templates with `{{placeholder}}` substitution. */
+    /** Prompt templates with `{{placeholder}}` substitution. */
     prompts: {
         filter: string;
         report: string;
+        /** Prompt for generating detailed job summaries (LLM phase). */
+        jobSummary: string;
     };
 }
 

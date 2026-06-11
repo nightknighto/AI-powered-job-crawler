@@ -13,31 +13,40 @@ async function loadPrompt(name: string): Promise<string> {
     return fs.readFile(path.join(__dirname, "prompts", name), "utf-8");
 }
 
-const [filterPrompt, reportPrompt] = await Promise.all([
+const [filterPrompt, reportPrompt, jobSummaryPrompt] = await Promise.all([
     loadPrompt("filter.md"),
     loadPrompt("report.md"),
+    loadPrompt("job-summary.md"),
 ]);
 
 const jobSchema = z.object({
     jobTitle: z.string(),
     jobURL: z.string(),
-    companyAndLocation: z.string(),
+    company: z.string(),
+    location: z.string(),
     date: z.string(),
     jobDetails: z.array(z.string()),
     tags: z.string(),
 }) satisfies z.ZodType<WuzzufJob>;
 
+/** Slim schema — LLM only outputs deduced fields + jobURL (matching key). */
+const evaluationSchema = z.object({
+    jobURL: z.string(),
+    status: JobStatus,
+    reason: z.array(z.string()),
+    experienceLevel: z.string(),
+    skills: z.array(z.string()),
+}).array();
+
 export const wuzzufConfig: SiteConfig<WuzzufJob> = {
     name: "wuzzuf",
     crawl: crawlWuzzuf,
     jobSchema,
-    evaluationSchema: jobSchema.extend({
-        status: JobStatus,
-        reason: z.array(z.string()),
-    }).array(),
+    evaluationSchema,
     prompts: {
         filter: filterPrompt,
         report: reportPrompt,
+        jobSummary: jobSummaryPrompt,
     },
 };
 

@@ -20,16 +20,16 @@ export const modelConfigs = {
         temperature: 0.2,
         think: false,
     },
-    gemma4: {
-        model: "gemma4:e4b",
-        temperature: 0.2,
-        think: false,
-    },
-    gemma4Thinking: {
-        model: "gemma4:e4b",
-        temperature: 0.2,
-        think: true,
-    },
+    // gemma4: {
+    //     model: "gemma4:e4b",
+    //     temperature: 0.2,
+    //     think: false,
+    // },
+    // gemma4Thinking: {
+    //     model: "gemma4:e4b",
+    //     temperature: 0.2,
+    //     think: true,
+    // },
 } as const satisfies Record<string, ModelConfig>;
 
 /** Union of all configured model keys (e.g. `'qwenReason' | 'qwenSmall' | 'gemma4'`). */

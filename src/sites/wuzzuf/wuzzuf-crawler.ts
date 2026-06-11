@@ -27,10 +27,13 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
                 });
             } else {
                 const jobDetails = $('section.css-5pnqc5');
+                const company = extractTextWithLineBreaks($, $('div.css-9iujih').first()).replace(' -', ''); // Get company name (first line before any location info)
+
                 await pushData({
                     jobTitle: $('h1.css-gkdl1m').text(),
                     jobURL: request.url,
-                    companyAndLocation: extractTextWithLineBreaks($, $('strong.css-1vlp604')),
+                    company: company === '-' ? 'Confidential' : company, // Handle cases where company is hidden
+                    location: extractTextWithLineBreaks($, $('strong.css-1vlp604')).split('\n').at(-1)!,
                     date: $('span.css-154erwh').text(),
                     jobDetails: jobDetails.map((_i, job) => extractTextWithLineBreaks($, $(job))).get(),
                     tags: $('.css-5kov97 a').map((_i, tag) => extractTextWithLineBreaks($, $(tag))).get().join(", "),

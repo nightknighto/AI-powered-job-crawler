@@ -9,6 +9,6 @@ const model = modelConfigs.qwenReason;
 const site = wuzzufConfig;
 
 const jobs = await crawl(site);
-// const evaluated = await evaluate(site, jobs, model);
-// const markdown = await report(site, evaluated, model);
-// display("", markdown);
+const evaluated = await evaluate(site, jobs, model);
+const markdown = await report(site, evaluated, model);
+display("", markdown);

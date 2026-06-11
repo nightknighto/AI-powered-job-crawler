@@ -36,10 +36,49 @@ export async function evaluate<T extends BaseJob>(
     const parsed = site.evaluationSchema.parse(JSON.parse(response.message.content));
     console.log("----------Parsed Filter Output----------\n", parsed);
 
-    const evaluated: EvaluatedJob<T>[] = parsed.map((item: any) => {
-        const { status, reason, ...job } = item;
-        return { job: job as T, status, reason };
-    });
+    // Build lookup from input jobs by URL
+    const jobByUrl = new Map<string, T>();
+    for (const job of jobs) {
+        jobByUrl.set(job.jobURL, job);
+    }
+
+    // Validate: every LLM result must match an input job
+    const inputUrls = new Set(jobs.map((j) => j.jobURL));
+    const outputUrls = new Set<string>();
+    const evaluated: EvaluatedJob<T>[] = [];
+
+    for (const item of parsed as Array<Record<string, unknown>>) {
+        const { jobURL, status, reason, experienceLevel, skills } = item as {
+            jobURL: string;
+            status: JobStatus;
+            reason: string[];
+            experienceLevel: string;
+            skills: string[];
+        };
+
+        if (!inputUrls.has(jobURL)) {
+            throw new Error(`LLM returned unknown jobURL not in input: ${jobURL}`);
+        }
+        if (outputUrls.has(jobURL)) {
+            throw new Error(`LLM returned duplicate jobURL: ${jobURL}`);
+        }
+
+        const job = jobByUrl.get(jobURL);
+        if (!job) {
+            throw new Error(`jobURL lookup failed (should not happen): ${jobURL}`);
+        }
+
+        outputUrls.add(jobURL);
+        evaluated.push({ job, status, reason, experienceLevel, skills });
+    }
+
+    // Validate: no input jobs were dropped
+    if (outputUrls.size !== inputUrls.size) {
+        const missing = [...inputUrls].filter((url) => !outputUrls.has(url));
+        throw new Error(
+            `LLM dropped ${missing.length} job(s) from output: ${missing.join(", ")}`,
+        );
+    }
 
     // Run structural heuristics (non-blocking warnings)
     const heuristicResults = runStructuralHeuristics(jobs, evaluated);

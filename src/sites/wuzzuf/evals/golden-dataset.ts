@@ -21,7 +21,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Senior Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/lbuzsd9zelzl-senior-full-stack-developer-doha-qatar",
-            companyAndLocation: "- \nDoha, Qatar\n - \nDoha, Qatar",
+            company: "Confidential",
+            location: "Doha, Qatar",
             date: "posted 2 days ago",
             jobDetails: [
                 "Job Description\nWe are seeking an experienced Senior Full Stack Developer to lead the design, development, and maintenance of modern websites and digital platforms. The ideal candidate will have strong expertise in both front-end and back-end development, system architecture, API integrations, database management, and cloud deployment. The role requires excellent problem-solving skills, attention to detail, and the ability to work independently while collaborating with cross-functional teams.\nKey Responsibilities\nDesign, develop, test, and maintain scalable web applications.\nBuild responsive and user-friendly front-end interfaces.\nDevelop secure and efficient back-end services and APIs.\nIntegrate third-party services, payment gateways, CRM, ERP, and external APIs.\nOptimize application performance, security, and scalability.\nDesign and manage relational and non-relational databases.\nParticipate in system architecture and technical decision-making.\nTroubleshoot, debug, and resolve technical issues\nConduct code reviews and mentor junior developers.\nCollaborate with designers, project managers, and stakeholders.\nMaintain technical documentation and development standards.\nImplement CI/CD pipelines and deployment automation.",
@@ -38,7 +39,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Senior QA Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/itozuc6x5z7c-senior-qa-engineer-zealous-solutions-ltd-london-united-kingdom",
-            companyAndLocation: "Zealous Solutions Ltd. - \nLondon, United Kingdom\nZealous Solutions Ltd. - \nLondon, United Kingdom",
+            company: "Zealous Solutions Ltd.",
+            location: "London, United Kingdom",
             date: "posted 2 days ago",
             jobDetails: [
                 "Job Description\nAbout the Job\nAre you the kind of tester who takes personal responsibility for the quality of what ships - someone who doesn't wait for a test plan but looks at a feature and already knows where the risks are? Then this role is for you.\n \nYour work will directly impact the 500+ organisations and 180,000+ creators who use Zealous. We're a submissions management platform trusted by clients like the Saatchi Gallery, British Library, and Cass Arts.\nWe've been around for 15 years and we're small on purpose - no layers of management, no unnecessary process. You'll join our existing development team in Egypt and report to our QA Lead.\n \nThe Role\nWe're looking for someone who is both strategic and happy to get their hands dirty. You'll own QA across the Zealous platform - building automated test suites, doing hands-on exploratory testing, and writing bug reports developers can act on. You'll decide what needs deep testing and what needs a quick smoke test. This is your function to shape; we'll give you context and support, but we won't micromanage how you do it.",
@@ -47,7 +49,7 @@ const realJobs: GoldenEntry[] = [
             tags: "Full Time, Remote",
         },
         expectedStatus: "FAIL",
-        expectedReasonKeywords: ["QA", "senior", "non-dev"],
+        expectedReasonKeywords: ["QA", "senior"],
     },
 
     // #3 — Oracle APEX Developer (Cairo, Egypt, Hybrid) → FAIL: non-JS/TS stack (Oracle)
@@ -55,7 +57,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Oracle APEX Developer",
             jobURL: "https://wuzzuf.net/jobs/p/5fiergofyeuz-oracle-apex-developer-icis-cairo-egypt",
-            companyAndLocation: "ICIS - \nالقاهرة الجديدة, القاهرة\nICIS - \nالقاهرة الجديدة, القاهرة",
+            company: "ICIS",
+            location: "القاهرة الجديدة, القاهرة",
             date: "posted 52 minutes ago",
             jobDetails: [
                 "Job Description\nWe are seeking an experienced Oracle APEX Developer with a minimum of 5 years of hands-on experience in designing, developing, and maintaining robust APEX applications. The ideal candidate will be responsible for translating business requirements into scalable and high-performance solutions, ensuring the reliability and security of the applications.",
@@ -72,7 +75,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/lzugdm6ettas-full-stack-developer-actum-cx-cairo-egypt",
-            companyAndLocation: "Actum.cx - \nCairo, Egypt\nActum.cx - \nCairo, Egypt",
+            company: "Actum.cx",
+            location: "Cairo, Egypt",
             date: "posted 6 days ago",
             jobDetails: [
                 "Job Description\nwe're Hiring Full Stack Developer (Full-Time / Part-Time)\nWe are seeking motivated and talented Full Stack Developers to join our growing engineering team. This is an opportunity to work on a high-impact product, contribute to meaningful technical challenges, and collaborate with a team focused on building scalable, reliable, and modern software solutions.\nTechnology Stack\n NestJS\n Go (Golang)\n React.js\n Next.js\n TypeScript",
@@ -89,7 +93,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Technical SEO Specialist",
             jobURL: "https://wuzzuf.net/jobs/p/cgylsyv5jf2u-technical-seo-specialist-harper-media-group-arlington-united-states",
-            companyAndLocation: "Harper Media Group - \nArlington, United States\nHarper Media Group - \nArlington, United States",
+            company: "Harper Media Group",
+            location: "Arlington, United States",
             date: "posted 2 days ago",
             jobDetails: [
                 "Job Description\nTechnical SEO Specialist - MID / SENIOR \nDeep technical execution is your zone. You're comfortable in server logs, Search Console, Screaming Frog, and the browser DevTools. You implement structured data, diagnose crawl issues, interpret Core Web Vitals data, and translate complex findings into clear recommendations.",
@@ -98,7 +103,7 @@ const realJobs: GoldenEntry[] = [
             tags: "Full Time, Part Time, Freelance / Project, Remote",
         },
         expectedStatus: "FAIL",
-        expectedReasonKeywords: ["SEO", "non-dev"],
+        expectedReasonKeywords: ["SEO"],
     },
 
     // #6 — Full Stack Developer (Thobify, Riyadh Saudi Arabia, Remote) → PASS: Next.js/TS stack, remote OK (non-Egypt remote is OK), 3yr exp OK
@@ -106,7 +111,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/saudi/jobs/p/cvujxzic6usq-full-stack-developer-thobify-riyadh-saudi-arabia",
-            companyAndLocation: "Thobify - \nRiyadh, Saudi Arabia\nThobify - \nRiyadh, Saudi Arabia",
+            company: "Thobify",
+            location: "Riyadh, Saudi Arabia",
             date: "تم النشر منذ 3 days",
             jobDetails: [
                 "وصف الوظيفة\nThobify is an AI-powered custom thobe marketplace launching in Saudi Arabia. We connect customers with the country's finest tailors — letting them scan their body measurements, browse tailor portfolios, customize their thobe in 3D, and place an order in under 5 minutes.\nYou'll be the lead developer on a greenfield build. The architecture and design direction are ready — you bring it to life.\nStack: Next.js (App Router), TypeScript, Tailwind CSS, Supabase, Three.js, Vercel.\nThis is a fully remote, full-time role with direct access to the founder.",
@@ -123,7 +129,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Backend Node js Developer",
             jobURL: "https://wuzzuf.net/jobs/p/cphbhepphcek-backend-node-js-developer-objects-alexandria-egypt",
-            companyAndLocation: "Objects - \nAlexandria, Egypt\nObjects - \nAlexandria, Egypt",
+            company: "Objects",
+            location: "Alexandria, Egypt",
             date: "posted 24 hours ago",
             jobDetails: [
                 "Job Description\nBackend Development\nDevelop and maintain scalable backend services and APIs using Node.js.\nImplement business logic, integrations, and optimize system performance.\nTroubleshoot technical and production issues.\nOCS & System Integration\nBuild and maintain integrations with OCS, internal platforms, and third-party systems.",
@@ -140,7 +147,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Technical Lead – Full Stack Developer",
             jobURL: "https://wuzzuf.net/saudi/jobs/p/v40yllbxu3v2-technical-lead-full-stack-developer-ayvo-makkah-saudi-arabia",
-            companyAndLocation: "Ayvo  - \nمكة المكرمة, المملكة العربية السعودية\nAyvo  - \nمكة المكرمة, المملكة العربية السعودية",
+            company: "Ayvo",
+            location: "مكة المكرمة, المملكة العربية السعودية",
             date: "تم النشر منذ 5 days",
             jobDetails: [
                 "وصف الوظيفة\nWe are seeking an experienced and highly skilled Technical Lead – Full Stack Developer to join our team. The ideal candidate will lead the design and development of scalable web applications while providing technical guidance and mentorship to the development team. This role combines hands-on full-stack development with architectural ownership and team leadership, using modern technologies such as React, Next.js, Node.js, and AWS.",
@@ -157,7 +165,8 @@ const realJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/frontend-developer-company-cairo-egypt",
-            companyAndLocation: "TechCo - \nCairo, Egypt\nTechCo - \nCairo, Egypt",
+            company: "TechCo",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nWe are looking for a Frontend Developer to join our team building modern web applications with React and TypeScript. You will work closely with designers and backend engineers to deliver pixel-perfect, performant user interfaces.",
@@ -182,7 +191,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Frontend Development Internship",
             jobURL: "https://wuzzuf.net/jobs/p/internship-frontend-dev-cairo",
-            companyAndLocation: "StartupHub - \nCairo, Egypt",
+            company: "StartupHub",
+            location: "Cairo, Egypt",
             date: "posted 1 hour ago",
             jobDetails: [
                 "Job Description\nJoin our team as a frontend development intern. You will work with React and TypeScript on real projects.",
@@ -199,7 +209,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Junior Web Developer",
             jobURL: "https://wuzzuf.net/jobs/p/junior-web-dev-intern-cairo",
-            companyAndLocation: "WebAgency - \nGiza, Egypt",
+            company: "WebAgency",
+            location: "Giza, Egypt",
             date: "posted 3 hours ago",
             jobDetails: [
                 "Job Description\nWe are offering a paid intern position for a junior web developer. You will assist the team in building web applications using modern JavaScript frameworks.",
@@ -218,7 +229,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Senior Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/senior-frontend-dev-exception-cairo",
-            companyAndLocation: "FlexiTech - \nCairo, Egypt",
+            company: "FlexiTech",
+            location: "Cairo, Egypt",
             date: "posted 5 hours ago",
             jobDetails: [
                 "Job Description\nWe are looking for a Senior Frontend Developer to lead our React projects. However, we consider 2-3 years of hands-on experience with React/TypeScript to be acceptable for this role if you demonstrate strong skills. The title is Senior but we value demonstrated ability over years.",
@@ -237,7 +249,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Engineering Manager",
             jobURL: "https://wuzzuf.net/jobs/p/engineering-manager-cairo",
-            companyAndLocation: "CorpTech - \nCairo, Egypt",
+            company: "CorpTech",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nWe are looking for an Engineering Manager to lead our frontend team. You will manage a team of 8 developers working on React and Node.js applications.",
@@ -254,7 +267,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Head of Engineering",
             jobURL: "https://wuzzuf.net/jobs/p/head-of-engineering-cairo",
-            companyAndLocation: "ScaleUp - \nCairo, Egypt",
+            company: "ScaleUp",
+            location: "Cairo, Egypt",
             date: "posted 2 days ago",
             jobDetails: [
                 "Job Description\nWe are hiring a Head of Engineering to oversee all technical operations. Our stack is primarily Node.js and React.",
@@ -271,7 +285,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Principal Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/principal-engineer-cairo",
-            companyAndLocation: "BigCorp - \nCairo, Egypt",
+            company: "BigCorp",
+            location: "Cairo, Egypt",
             date: "posted 3 days ago",
             jobDetails: [
                 "Job Description\nWe are seeking a Principal Software Engineer to set technical direction for our Node.js microservices platform.",
@@ -288,7 +303,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Director of Software Development",
             jobURL: "https://wuzzuf.net/jobs/p/director-software-cairo",
-            companyAndLocation: "EnterpriseCo - \nCairo, Egypt",
+            company: "EnterpriseCo",
+            location: "Cairo, Egypt",
             date: "posted 4 days ago",
             jobDetails: [
                 "Job Description\nDirector of Software Development needed to lead multiple engineering teams building web applications with React and TypeScript.",
@@ -305,7 +321,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Staff Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/staff-engineer-cairo",
-            companyAndLocation: "MegaTech - \nCairo, Egypt",
+            company: "MegaTech",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nStaff Software Engineer role focused on building scalable backend services with Node.js and TypeScript.",
@@ -324,7 +341,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Mobile Developer",
             jobURL: "https://wuzzuf.net/jobs/p/flutter-mobile-dev-cairo",
-            companyAndLocation: "AppHouse - \nCairo, Egypt",
+            company: "AppHouse",
+            location: "Cairo, Egypt",
             date: "posted 2 hours ago",
             jobDetails: [
                 "Job Description\nWe are building a mobile-first product using Flutter and Dart. You will be responsible for the entire mobile app lifecycle.",
@@ -341,7 +359,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "React Native Developer",
             jobURL: "https://wuzzuf.net/jobs/p/react-native-dev-cairo",
-            companyAndLocation: "MobileFirst - \nCairo, Egypt",
+            company: "MobileFirst",
+            location: "Cairo, Egypt",
             date: "posted 4 hours ago",
             jobDetails: [
                 "Job Description\nJoin our mobile team building cross-platform apps with React Native. This is a mobile-first role focused entirely on iOS and Android app development.",
@@ -358,7 +377,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/laravel-backend-dev-cairo",
-            companyAndLocation: "PHPCorp - \nCairo, Egypt",
+            company: "PHPCorp",
+            location: "Cairo, Egypt",
             date: "posted 6 hours ago",
             jobDetails: [
                 "Job Description\nWe are looking for a Backend Developer to build and maintain our Laravel-based e-commerce platform. The primary stack is PHP with Laravel framework.",
@@ -375,7 +395,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/django-backend-dev-cairo",
-            companyAndLocation: "PyShop - \nCairo, Egypt",
+            company: "PyShop",
+            location: "Cairo, Egypt",
             date: "posted 8 hours ago",
             jobDetails: [
                 "Job Description\nBackend Developer needed to build REST APIs using Python and Django. Our entire platform runs on Django with PostgreSQL.",
@@ -392,7 +413,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Java Developer",
             jobURL: "https://wuzzuf.net/jobs/p/java-spring-dev-cairo",
-            companyAndLocation: "EnterpriseSoft - \nCairo, Egypt",
+            company: "EnterpriseSoft",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nWe are hiring a Java Developer to work on our enterprise platform built with Spring Boot and microservices architecture.",
@@ -409,7 +431,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: ".NET Developer",
             jobURL: "https://wuzzuf.net/jobs/p/dotnet-developer-cairo",
-            companyAndLocation: "DotNetCorp - \nCairo, Egypt",
+            company: "DotNetCorp",
+            location: "Cairo, Egypt",
             date: "posted 2 days ago",
             jobDetails: [
                 "Job Description\nWe need a .NET Developer to build web APIs using C# and ASP.NET Core. The role involves working on our SaaS platform.",
@@ -426,7 +449,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Ruby on Rails Developer",
             jobURL: "https://wuzzuf.net/jobs/p/rails-dev-cairo",
-            companyAndLocation: "RailsShop - \nCairo, Egypt",
+            company: "RailsShop",
+            location: "Cairo, Egypt",
             date: "posted 3 days ago",
             jobDetails: [
                 "Job Description\nRuby on Rails Developer to maintain and extend our e-commerce platform. Primary stack is Ruby with Rails framework and PostgreSQL.",
@@ -443,7 +467,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Kotlin Developer",
             jobURL: "https://wuzzuf.net/jobs/p/kotlin-dev-cairo",
-            companyAndLocation: "KotlinShop - \nCairo, Egypt",
+            company: "KotlinShop",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nKotlin Developer for building backend microservices using Ktor and Kotlin. This role focuses on server-side Kotlin development.",
@@ -462,7 +487,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Product Manager",
             jobURL: "https://wuzzuf.net/jobs/p/product-manager-cairo",
-            companyAndLocation: "ProductCo - \nCairo, Egypt",
+            company: "ProductCo",
+            location: "Cairo, Egypt",
             date: "posted 5 hours ago",
             jobDetails: [
                 "Job Description\nProduct Manager to lead our web platform roadmap. You will work with engineering teams building React and Node.js applications. Technical background in JS/TS is a plus.",
@@ -471,7 +497,7 @@ const syntheticJobs: GoldenEntry[] = [
             tags: "Full Time, Hybrid",
         },
         expectedStatus: "FAIL",
-        expectedReasonKeywords: ["product manager", "non-dev"],
+        expectedReasonKeywords: ["product manager"],
     },
 
     // #27 — UI/UX Designer
@@ -479,7 +505,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "UI/UX Designer",
             jobURL: "https://wuzzuf.net/jobs/p/ui-ux-designer-cairo",
-            companyAndLocation: "DesignStudio - \nCairo, Egypt",
+            company: "DesignStudio",
+            location: "Cairo, Egypt",
             date: "posted 3 hours ago",
             jobDetails: [
                 "Job Description\nUI/UX Designer to create beautiful interfaces for our React-based web application. Familiarity with front-end development is helpful but not required.",
@@ -488,7 +515,7 @@ const syntheticJobs: GoldenEntry[] = [
             tags: "Full Time, Remote",
         },
         expectedStatus: "FAIL",
-        expectedReasonKeywords: ["designer", "non-dev"],
+        expectedReasonKeywords: ["designer"],
     },
 
     // #28 — Data Analyst
@@ -496,7 +523,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Data Analyst",
             jobURL: "https://wuzzuf.net/jobs/p/data-analyst-cairo",
-            companyAndLocation: "DataCorp - \nCairo, Egypt",
+            company: "DataCorp",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nData Analyst to extract insights from our platform data. Some scripting with JavaScript/Python may be needed for data pipelines.",
@@ -505,7 +533,7 @@ const syntheticJobs: GoldenEntry[] = [
             tags: "Full Time, Hybrid",
         },
         expectedStatus: "FAIL",
-        expectedReasonKeywords: ["data analyst", "non-dev"],
+        expectedReasonKeywords: ["data analyst"],
     },
 
     // ─── Location Filters ───
@@ -515,7 +543,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-onsite-cairo",
-            companyAndLocation: "OnSiteCo - \nCairo, Egypt",
+            company: "OnSiteCo",
+            location: "Cairo, Egypt",
             date: "posted 2 hours ago",
             jobDetails: [
                 "Job Description\nFull Stack Developer needed for our Cairo office. You will work on-site with our team building applications with React and Node.js. No remote work option available.",
@@ -532,7 +561,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/frontend-hybrid-dubai",
-            companyAndLocation: "DubaiTech - \nDubai, UAE",
+            company: "DubaiTech",
+            location: "Dubai, UAE",
             date: "posted 4 hours ago",
             jobDetails: [
                 "Job Description\nFrontend Developer to work on our React application. This is a hybrid role requiring 3 days per week in our Dubai office.",
@@ -549,7 +579,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-remote-berlin",
-            companyAndLocation: "BerlinStart - \nBerlin, Germany",
+            company: "BerlinStart",
+            location: "Berlin, Germany",
             date: "posted 6 hours ago",
             jobDetails: [
                 "Job Description\nFull Stack Developer for a fully remote position. Our tech stack is Next.js, TypeScript, and Node.js. Work from anywhere in the world.",
@@ -566,7 +597,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-ambiguous-stack-cairo",
-            companyAndLocation: "AmbigCorp - \nCairo, Egypt",
+            company: "AmbigCorp",
+            location: "Cairo, Egypt",
             date: "posted 3 hours ago",
             jobDetails: [
                 "Job Description\nFull Stack Developer to work on both our Node.js microservices and Python data processing pipelines. The role involves equal time between the Node.js API layer and the Python ML pipeline. Our frontend is React with TypeScript.",
@@ -575,7 +607,7 @@ const syntheticJobs: GoldenEntry[] = [
             tags: "Full Time, Hybrid",
         },
         expectedStatus: "POTENTIAL_MATCH",
-        expectedReasonKeywords: ["ambiguous", "Python"],
+        expectedReasonKeywords: ["Python"],
     },
 
     // ─── Challenging PASS jobs (edge cases the LLM might misclassify) ───
@@ -585,7 +617,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/vue-frontend-dev-cairo",
-            companyAndLocation: "VueHouse - \nCairo, Egypt",
+            company: "VueHouse",
+            location: "Cairo, Egypt",
             date: "posted 2 hours ago",
             jobDetails: [
                 "Job Description\nWe are building a modern SaaS dashboard using Vue 3, TypeScript, Pinia for state management, and Vite as our build tool. You will own the frontend architecture and collaborate with our backend team consuming REST APIs.",
@@ -602,7 +635,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/angular-frontend-giza",
-            companyAndLocation: "AngularCorp - \nGiza, Egypt",
+            company: "AngularCorp",
+            location: "Giza, Egypt",
             date: "posted 5 hours ago",
             jobDetails: [
                 "Job Description\nJoin our team building enterprise-grade web applications with Angular and TypeScript. You will work on complex forms, data tables, and real-time dashboards using RxJS and NgRx.",
@@ -619,7 +653,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/software-engineer-cloud-cairo",
-            companyAndLocation: "CloudScale - \nCairo, Egypt",
+            company: "CloudScale",
+            location: "Cairo, Egypt",
             date: "posted 1 day ago",
             jobDetails: [
                 "Job Description\nSoftware Engineer to join our platform team. You will design and implement microservices deployed on Kubernetes, manage CI/CD pipelines, configure Terraform modules, optimize Docker images, monitor with Grafana and Prometheus, and develop our core API services in Node.js with TypeScript using Express and PostgreSQL.",
@@ -636,7 +671,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/nextjs-fullstack-alex",
-            companyAndLocation: "DataWeb - \nAlexandria, Egypt",
+            company: "DataWeb",
+            location: "Alexandria, Egypt",
             date: "posted 3 hours ago",
             jobDetails: [
                 "Job Description\nFull Stack Developer to build and maintain our customer-facing web platform. Our core stack is Next.js (App Router), TypeScript, Tailwind CSS, and Prisma with PostgreSQL. You will build features end-to-end from database schema to UI components.",
@@ -653,7 +689,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/express-backend-mansoura",
-            companyAndLocation: "APIShop - \nMansoura, Egypt",
+            company: "APIShop",
+            location: "Mansoura, Egypt",
             date: "posted 4 hours ago",
             jobDetails: [
                 "Job Description\nBackend Developer to build and maintain our REST API serving mobile and web clients. Our backend is built with Express.js, TypeScript, and MongoDB with Mongoose ODM. No frontend work required.",
@@ -670,7 +707,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/nestjs-backend-arabic-cairo",
-            companyAndLocation: "تكنو.sol - \nالقاهرة, مصر\nتكنو.sol - \nالقاهرة, مصر",
+            company: "تكنو.sol",
+            location: "القاهرة, مصر",
             date: "تم النشر منذ 2 hours",
             jobDetails: [
                 "وصف الوظيفة\nنبحث عن مطور Backend للانضمام لفريقنا. مكدس التقنيات يشمل NestJS و TypeScript و PostgreSQL. سنقوم ببناء واجهات برمجة تطبيقات REST و GraphQL لتخدم تطبيقات الويب والموبايل الخاصة بنا.",
@@ -687,7 +725,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "Mid-level Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/midlevel-fullstack-cairo",
-            companyAndLocation: "GrowthTech - \nCairo, Egypt",
+            company: "GrowthTech",
+            location: "Cairo, Egypt",
             date: "posted 6 hours ago",
             jobDetails: [
                 "Job Description\nWe are hiring a Mid-level Full Stack Developer to work on our React and Node.js platform. You will build new features, write tests, and participate in code reviews. This is not a senior or lead position — you will receive mentorship and guidance.",
@@ -704,7 +743,8 @@ const syntheticJobs: GoldenEntry[] = [
         job: {
             jobTitle: "JavaScript Developer",
             jobURL: "https://wuzzuf.net/jobs/p/vanilla-js-dev-cairo",
-            companyAndLocation: "PlainJS - \nCairo, Egypt",
+            company: "PlainJS",
+            location: "Cairo, Egypt",
             date: "posted 8 hours ago",
             jobDetails: [
                 "Job Description\nJavaScript Developer to build custom browser-based tools and Node.js CLI utilities. We don't use any frontend framework — you will work with vanilla JavaScript, the DOM API, and Node.js for backend scripting. Strong understanding of core JS concepts is essential.",

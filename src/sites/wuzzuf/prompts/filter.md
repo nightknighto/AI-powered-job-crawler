@@ -4,15 +4,13 @@ Your job is to take the structured JSON content below, run it through a single, 
 
 ## **Output Format**
 
-You MUST output your response as a JSON array where each object matches the following schema:
-- jobTitle (string): The title of the job
-- jobURL (string): The URL of the job posting
-- companyAndLocation (string): The company name and location
-- tags (string): The tags associated with the job posting
-- date (string): The date the job was posted
-- jobDetails (array of strings): The details about the job from the input data
+You MUST output your response as a JSON array where each object contains **only** the evaluation fields below. Do NOT repeat or echo back any input job data (no jobTitle, company, location, date, jobDetails, tags).
+
+- jobURL (string): The URL of the job (used as a key to match back to the input)
 - status (enum): Must be one of "PASS", "FAIL", or "POTENTIAL_MATCH"
 - reason (array of strings): The reasons for the status and analysis based on the filtering criteria
+- experienceLevel (string): The experience requirement extracted from the job (e.g. "2+ years", "0-10 years", "5+ years"). Use "N/A" if not found.
+- skills (array of strings): The core tech stack / skills found in the job (e.g. ["React", "TypeScript", "Node.js"]). Empty array if none found.
 
 ## **Steps**
 
@@ -22,7 +20,9 @@ Analyze both the top-level metadata and the complete text details provided insid
 
 * **Title Filter:** Reject if the title contains any of these keywords (case-insensitive): "Senior" (unless the text explicitly says 2-3 years is acceptable), "Lead", "Manager", "Head of", "Director", "Principal", "Staff".  
 * **Internship Filter:** Reject any job tagged as "Internship" or with "Intern" in the title or description text.  
-* **Tech Stack Filter:** Reject if the primary stack is non-JS/TS (e.g., dominated by PHP, Laravel, Python, Django, .NET, C#, Java, Spring, Kotlin, Ruby, Rails, or mobile-first Flutter/React Native). Keep if the primary stack is JS/TS-focused (JavaScript, TypeScript, Node.js, React, Next.js, Vue, Angular, NestJS, Express, etc.).  
+* **Tech Stack Filter:** Reject if the primary stack is non-JS/TS and JS/TS plays no meaningful role (e.g., dominated by PHP, Laravel, Python, Django, .NET, C#, Java, Spring, Kotlin, Ruby, Rails, or mobile-first Flutter/React Native with no web dev). Keep if the primary stack is JS/TS-focused (JavaScript, TypeScript, Node.js, React, Next.js, Vue, Angular, NestJS, Express, etc.). **Note:**
+  - A job that is primarily JS/TS but also mentions a secondary language (e.g., Go, Rust, Python for scripts/tools) should still be kept.
+  - A job where the primary stack is non-JS/TS but JS/TS is mentioned prominently in responsibilities or requirements should be marked as "POTENTIAL_MATCH" rather than rejected — the candidate may still do meaningful JS/TS work.  
 * **Depth & Experience Filter:** Reject if the full text in "jobDetails" reveals:
   * **Experience requirement is 4+ years or more** (3 years or less is acceptable; 4+ years is rejected).
   * **The job requires fully on-site work** (fully on-site is always rejected; hybrid work in Egypt is acceptable even with office days; hybrid work in non-Egypt locations is rejected unless the text explicitly states remote work is possible from Egypt).

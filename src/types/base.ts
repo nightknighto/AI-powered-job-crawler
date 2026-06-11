@@ -2,6 +2,8 @@
 export interface BaseJob {
     jobTitle: string;
     jobURL: string;
+    company: string;
+    location: string;
     date: string;
     jobDetails: string[];
 }
