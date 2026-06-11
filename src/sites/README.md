@@ -13,6 +13,7 @@ interface SiteConfig<T extends BaseJob> {
   prompts: {
     filter: string;                // Filter prompt template with {{jobs}} placeholder
     report: string;                // Report prompt template with {{evaluatedJobs}} placeholder
+    jobSummary: string;            // Prompt for generating detailed job summaries
   };
 }
 ```
@@ -24,10 +25,11 @@ interface SiteConfig<T extends BaseJob> {
 | File | Purpose |
 |------|---------|
 | `index.ts` | SiteConfig definition. Loads prompt templates from `prompts/` via `fs.readFile`. Defines Zod schemas for WuzzufJob structure and LLM evaluation response. |
-| `wuzzuf-crawler.ts` | Cheerio crawler targeting 4 search URLs (react, nextjs, vue, node). Extracts: jobTitle, jobURL, date, companyAndLocation, tags, jobDetails. Max 20 requests. |
+| `wuzzuf-crawler.ts` | Cheerio crawler targeting 4 search URLs (react, nextjs, vue, node). Extracts: jobTitle, jobURL, date, company, location, tags, jobDetails. Max 20 requests. |
 | `evals/golden-dataset.ts` | 40 hand-labeled jobs for evaluation. |
 | `prompts/filter.md` | LLM filtering prompt with 6 rule categories (title, internship, tech stack, experience, role type, location). |
 | `prompts/report.md` | LLM report generation prompt. |
+| `prompts/job-summary.md` | LLM prompt for generating detailed job summaries. |
 
 ## Adding a New Site
 

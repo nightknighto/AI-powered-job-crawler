@@ -36,6 +36,15 @@ displayReport(markdown: string): void
 
 Renders markdown to terminal using `marked` + `marked-terminal` + `chalk`. Has `@ts-ignore` on `marked.use(markedTerminal())` due to type mismatch (works at runtime).
 
+### 5. `report-helpers.ts`
+
+Deterministic report utilities (no LLM calls):
+
+- `parseRelativeDate(dateStr)` — Parses relative date strings (English + Arabic) into numeric days for sorting
+- `splitByStatus(jobs)` — Splits evaluated jobs into passing (`PASS` + `POTENTIAL_MATCH`) and failing groups
+- `sortByDate(jobs)` — Sorts jobs by date (newest first)
+- `buildReportTables(jobs)` — Builds the passing/failing markdown tables + summary counts
+
 ## Pipeline Flow
 
 ```
@@ -67,7 +76,7 @@ sequenceDiagram
 
 | Type | Source | Description |
 |------|--------|-------------|
-| `BaseJob` | `src/types/base.ts` | `{ jobTitle, jobURL, date, jobDetails }` |
+| `BaseJob` | `src/types/base.ts` | `{ jobTitle, jobURL, company, location, date, jobDetails[] }` |
 | `EvaluatedJob<T>` | `src/types/evaluated-job.ts` | `{ job: T, status: JobStatus, reason: string[] }` |
 | `SiteConfig<T>` | `src/types/site-config.ts` | Generic config with crawl fn, schemas, prompts |
 | `ModelConfigKey` | `src/config.ts` | Keys of `modelConfigs` — check the file for current values |

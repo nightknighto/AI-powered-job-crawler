@@ -18,6 +18,7 @@ Compares AI-evaluated jobs against a hand-labeled golden dataset.
 | `expectedStatus` | Golden dataset status |
 | `actualStatus` | AI-determined status |
 | `statusMatch` | Whether expected === actual |
+| `dropped` | Whether the AI didn't include this job at all |
 | `expectedKeywords` | Keywords expected in reason text |
 | `matchedKeywords` | Keywords found in AI reason |
 | `unmatchedKeywords` | Expected keywords not found |
@@ -49,7 +50,7 @@ Compares AI-evaluated jobs against a hand-labeled golden dataset.
 | Command | Description |
 |---------|-------------|
 | `pnpm eval <model>` | Run golden eval + structural heuristics for one model. Exit code 1 if accuracy < 80%. |
-| `pnpm compare` | Run eval for all 3 models, print ranked comparison table sorted by PASS F1. |
+| `pnpm compare` | Run eval for all configured models, print ranked comparison table sorted by PASS F1. |
 
 ## Adding New Heuristics
 
@@ -72,3 +73,11 @@ Located at `src/sites/wuzzuf/evals/golden-dataset.ts`. Contains **40 hand-labele
 Each entry: `{ job: WuzzufJob, expectedStatus: JobStatus, expectedReasonKeywords: string[] }`
 
 Jobs are numbered **#1–#40** in comments — keep numbering in sync when adding/removing jobs.
+
+### 3. Report Writer (`report-writer.ts`)
+
+Writes eval results to the `eval-results/` directory as markdown files:
+
+- **`writeEvalReport()`** — Writes a single-model eval report with per-job comparison, class metrics table, and heuristic results
+- **`writeCompareReport()`** — Writes a multi-model comparison report ranking all models by PASS F1
+- Timestamps are included in filenames for easy comparison over time

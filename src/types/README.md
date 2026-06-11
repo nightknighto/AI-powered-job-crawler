@@ -19,17 +19,20 @@ Base interface for all job listings:
 |-------|------|-------------|
 | `jobTitle` | `string` | Job title |
 | `jobURL` | `string` | Unique URL (used for matching in golden eval) |
-| `date` | `string` | Posting date |
-| `jobDetails` | `string` | Full job description text |
+| `company` | `string` | Company name |
+| `location` | `string` | Job location |
+| `date` | `string` | Posting date (relative string, e.g. "posted 2 days ago") |
+| `jobDetails` | `string[]` | Array of job description lines |
 
 ### `WuzzufJob` (`WuzzufJob.ts`)
 
-Extends `BaseJob` with Wuzzuf-specific fields:
+Extends `BaseJob` with Wuzzuf-specific overrides:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `companyAndLocation` | `string` | Combined company name + location |
-| `tags` | `string` | Comma-separated tag strings |
+| `company` | `string` | Company name (overrides BaseJob) |
+| `location` | `string` | Job location (overrides BaseJob) |
+| `tags` | `string` | Comma-separated tag strings (e.g. `'Full Time, Remote'`) |
 
 ### `JobStatus` (`evaluated-job.ts`)
 
@@ -50,6 +53,8 @@ Generic wrapper for evaluated jobs:
 | `job` | `T` | The original job data |
 | `status` | `JobStatus` | AI-determined status |
 | `reason` | `string[]` | Array of reason strings explaining the decision |
+| `experienceLevel?` | `string` | Experience level extracted by the LLM (e.g. "2+ years") |
+| `skills?` | `string[]` | Core tech stack identified by the LLM (e.g. ["React", "TypeScript"]) |
 
 ### `SiteConfig<T extends BaseJob>` (`site-config.ts`)
 
@@ -61,7 +66,7 @@ Generic site configuration:
 | `crawl` | `() => Promise<T[]>` | Crawling function |
 | `evaluationSchema` | `ZodSchema` | Zod schema for LLM output validation |
 | `jobSchema` | `ZodSchema` | Zod schema for job structure |
-| `prompts` | `{ filter: string, report: string }` | Prompt templates |
+| `prompts` | `{ filter: string, report: string, jobSummary: string }` | Prompt templates with `{{placeholder}}` substitution |
 
 ## Zod Schemas vs TypeScript Interfaces
 
