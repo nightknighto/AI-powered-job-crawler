@@ -33,6 +33,9 @@ export async function evaluate<T extends BaseJob>(
 
     console.log("------------Raw Filter Output-----------\n", response.message.content);
 
+    console.log(`⏱️  Load: ${(response.load_duration / 1_000_000_000).toFixed(1)}s | Prompt Eval: ${(response.prompt_eval_duration / 1_000_000_000).toFixed(1)}s | Eval: ${(response.eval_duration / 1_000_000_000).toFixed(1)}s | Total: ${(response.total_duration / 1_000_000_000).toFixed(1)}s`);
+    console.log(`📝  Input Tokens: ${response.prompt_eval_count} | Output Tokens: ${response.eval_count}`);
+
     const parsed = site.evaluationSchema.parse(JSON.parse(response.message.content));
     console.log("----------Parsed Filter Output----------\n", parsed);
 

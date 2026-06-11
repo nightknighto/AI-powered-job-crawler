@@ -1,6 +1,6 @@
 # Types
 
-Runtime-validated type definitions for job listings, evaluation results, and site configuration.
+Runtime-validated type definitions for job listings, evaluation results, site configuration, and reporter output.
 
 ## Type Hierarchy
 
@@ -8,6 +8,8 @@ Runtime-validated type definitions for job listings, evaluation results, and sit
 BaseJob (base.ts)
   └── WuzzufJob (WuzzufJob.ts)
 ```
+
+Reporter types are defined in `src/reporters/types.ts` — see [`src/reporters/README.md`](../reporters/README.md).
 
 ## Types
 

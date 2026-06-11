@@ -8,7 +8,8 @@
     "start": "tsx src/main.ts",
     "eval": "tsx src/eval.ts",
     "compare": "tsx src/compare-models.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "preview-reporter": "tsx src/reporters/preview.ts"
   },
   "keywords": [],
   "author": "",

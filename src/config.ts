@@ -1,3 +1,5 @@
+import { reporterMap } from "./reporters/index.js";
+
 /** Configuration for an Ollama model used in the evaluation pipeline. */
 export interface ModelConfig {
     /** Ollama model tag (e.g. `'qwen-reason'`). */
@@ -35,9 +37,11 @@ export const modelConfigs = {
 /** Union of all configured model keys (e.g. `'qwenReason' | 'qwenSmall' | 'gemma4'`). */
 export type ModelConfigKey = keyof typeof modelConfigs;
 
-/** Shared settings used across the pipeline (keep-alive, display colors, etc.). */
+/** Shared settings used across the pipeline (keep-alive, reporters, etc.). */
 export const shared = {
     keepAlive: "10m",
+    /** Reporter names to use for output. Change this to e.g. `["html", "cli-summary"]` for different output. */
+    reporters: ["cli-card", "html"] satisfies (keyof typeof reporterMap)[],
     display: {
         headingColor: "\x1b[94m\x1b[1m", // blueBright.bold
     },

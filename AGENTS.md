@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Job search filtering system that crawls Wuzzuf (Egyptian job board), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown reports in the terminal. Includes a golden-dataset evaluation framework for benchmarking LLM filter accuracy across multiple models.
+Job search filtering system that crawls Wuzzuf (Egyptian job board), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown/HTML reports via a composable reporter system. Includes a golden-dataset evaluation framework for benchmarking LLM filter accuracy across multiple models.
 
 ## Tech Stack & Conventions
 
@@ -54,6 +54,19 @@ const modelConfigs = {
 
 Keys are camelCase identifiers used in CLI args. `model` is the exact Ollama model tag. `think` enables Ollama's reasoning mode.
 
+### Reporter key pattern
+
+Reporters are configured in the `shared` object in `src/config.ts`, not per-model:
+
+```ts
+export const shared = {
+  reporters: ['cli-table'] as string[],
+  // ...
+};
+```
+
+Reporter keys are lowercase-hyphen strings registered in `src/reporters/index.ts`: `cli-table`, `cli-card`, `cli-summary`, `html`, `markdown`. Multiple reporters can be composed (e.g. `["html", "cli-summary"]` for HTML file + terminal summary). The `CompositeReporter` runs them sequentially sharing the same `ReportContext`.
+
 ## File Structure
 
 ```
@@ -71,9 +84,20 @@ src/
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
     evaluate.ts                    — LLM evaluation with Zod validation + structural heuristics
-    report.ts                      — Markdown report generation via LLM
+    generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
-    display.ts                     — Terminal rendering with marked + chalk
+  reporters/
+    types.ts                       — Reporter interface, ReportContext, ReportOutput types
+    composite.ts                   — CompositeReporter wraps multiple reporters, shares context
+    index.ts                       — Factory createReporters(names[]), availableReporters registry
+    cli-table.ts                   — Terminal markdown tables via marked-terminal (original behavior)
+    cli-card.ts                    — Stacked card format with full-width fields
+    cli-summary.ts                 — Compact counts + passing titles + file paths
+    html.ts                        — Styled HTML with auto-open, saved to reports/
+    markdown.ts                    — Timestamped .md file output, saved to reports/
+    preview.ts                     — Standalone preview script (pnpm preview-reporter)
+    fixtures/
+      sample-evaluated-jobs.ts     — 6 sample EvaluatedJob<WuzzufJob> for testing reporters
   evals/
     golden.ts                      — Golden dataset comparison engine (precision/recall/F1 per class)
     structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)

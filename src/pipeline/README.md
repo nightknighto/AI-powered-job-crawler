@@ -20,23 +20,15 @@ evaluate<T extends BaseJob>(jobs: T[], config: SiteConfig<T>, modelKey: ModelCon
 
 Sends jobs to Ollama LLM with the filter prompt, parses structured JSON response using Zod validation. Each job gets a status (`PASS`/`FAIL`/`POTENTIAL_MATCH`) and an array of reason strings. Uses `config.evaluationSchema` to validate the response and `config.prompts.filter` as the prompt template.
 
-### 3. `report.ts`
+### 3. `generate-summary.ts`
 
 ```ts
-generateReport<T extends BaseJob>(evaluatedJobs: EvaluatedJob<T>[], config: SiteConfig<T>, modelKey: ModelConfigKey): Promise<string>
+generateSummary<T extends BaseJob>(site: SiteConfig<T>, evaluatedJobs: EvaluatedJob<T>[], modelConfig: ModelConfig): Promise<string>
 ```
 
-Sends evaluated jobs to LLM with the report prompt, generates a human-readable markdown summary. Uses `config.prompts.report`.
+Generates an LLM summary for passing jobs only, using the `jobSummary` prompt template. Returns the raw markdown string (empty string if no passing jobs). Deterministic table generation is handled by reporters via `buildReportTables()`.
 
-### 4. `display.ts`
-
-```ts
-displayReport(markdown: string): void
-```
-
-Renders markdown to terminal using `marked` + `marked-terminal` + `chalk`. Has `@ts-ignore` on `marked.use(markedTerminal())` due to type mismatch (works at runtime).
-
-### 5. `report-helpers.ts`
+### 4. `report-helpers.ts`
 
 Deterministic report utilities (no LLM calls):
 
@@ -48,8 +40,8 @@ Deterministic report utilities (no LLM calls):
 ## Pipeline Flow
 
 ```
-crawl() → evaluate() → report() → displayReport()
-   T[]    EvaluatedJob<T>[]    string      void
+crawl() → evaluate() → generateSummary() → reporters.display()
+   T[]    EvaluatedJob<T>[]      string            void
 ```
 
 ```mermaid
@@ -57,19 +49,19 @@ sequenceDiagram
     participant main as main.ts
     participant crawl as crawl()
     participant evaluate as evaluate()
-    participant report as report()
-    participant display as displayReport()
+    participant summarize as generateSummary()
+    participant reporters as reporters.display()
 
     main->>crawl: SiteConfig<T>
     crawl-->>main: T[] (raw jobs)
     main->>evaluate: jobs + SiteConfig + modelKey
     Note right of evaluate: Ollama LLM + Zod validation
     evaluate-->>main: EvaluatedJob<T>[]
-    main->>report: evaluatedJobs + SiteConfig + modelKey
-    Note right of report: Ollama LLM generates markdown
-    report-->>main: string (markdown)
-    main->>display: markdown string
-    Note right of display: marked + chalk → terminal
+    main->>summarize: evaluatedJobs + SiteConfig + modelConfig
+    Note right of summarize: LLM summary for passing jobs only
+    summarize-->>main: string (summary markdown)
+    main->>reporters: jobs + summary + ReportContext
+    Note right of reporters: Composable: cli-table, html, markdown, etc.
 ```
 
 ## Key Types

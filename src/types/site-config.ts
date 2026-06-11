@@ -2,7 +2,7 @@ import { z } from "zod";
 import { BaseJob } from "./base.js";
 import { JobStatus } from "./evaluated-job.js";
 
-/** Site-specific configuration that plugs into the crawl → evaluate → report pipeline.
+/** Site-specific configuration that plugs into the crawl → evaluate → generateSummary pipeline.
  * @template T - The site-specific job type extending {@link BaseJob}.
  */
 export interface SiteConfig<T extends BaseJob = BaseJob> {
