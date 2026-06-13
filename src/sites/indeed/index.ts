@@ -3,9 +3,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import { SiteConfig } from "../../types/site-config.js";
-import { WuzzufJob } from "../../types/WuzzufJob.js";
+import { IndeedJob } from "../../types/IndeedJob.js";
 import { JobStatus } from "../../types/evaluated-job.js";
-import { crawlWuzzuf } from "./wuzzuf-crawler.js";
+import { crawlIndeed } from "./indeed-crawler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,8 +25,7 @@ const jobSchema = z.object({
     location: z.string(),
     date: z.string(),
     jobDetails: z.array(z.string()),
-    tags: z.string(),
-}) satisfies z.ZodType<WuzzufJob>;
+}) satisfies z.ZodType<IndeedJob>;
 
 /** Slim schema — LLM only outputs deduced fields + jobURL (matching key). */
 const evaluationSchema = z.object({
@@ -37,9 +36,9 @@ const evaluationSchema = z.object({
     skills: z.array(z.string()),
 }).array();
 
-export const wuzzufConfig: SiteConfig<WuzzufJob> = {
-    name: "wuzzuf",
-    crawl: crawlWuzzuf,
+export const indeedConfig: SiteConfig<IndeedJob> = {
+    name: "indeed",
+    crawl: crawlIndeed,
     jobSchema,
     evaluationSchema,
     prompts: {
@@ -48,4 +47,3 @@ export const wuzzufConfig: SiteConfig<WuzzufJob> = {
         jobSummary: jobSummaryPrompt,
     },
 };
-

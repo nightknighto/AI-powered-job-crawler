@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Job search filtering system that crawls Wuzzuf (Egyptian job board), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown/HTML reports via a composable reporter system. Includes a golden-dataset evaluation framework for benchmarking LLM filter accuracy across multiple models.
+Job search filtering system that crawls Wuzzuf and Indeed Egypt (job boards), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown/HTML reports via a composable reporter system. Includes a golden-dataset evaluation framework for benchmarking LLM filter accuracy across multiple models.
 
 ## Tech Stack & Conventions
 
@@ -67,17 +67,71 @@ export const shared = {
 
 Reporter keys are lowercase-hyphen strings registered in `src/reporters/index.ts`: `cli-table`, `cli-card`, `cli-summary`, `html`, `markdown`. Multiple reporters can be composed (e.g. `["html", "cli-summary"]` for HTML file + terminal summary). The `CompositeReporter` runs them sequentially sharing the same `ReportContext`.
 
+### Site addition pattern
+
+To add a new job board site:
+
+1. **Create site type** in `src/types/<Site>Job.ts` extending `BaseJob`:
+   ```ts
+   export interface SiteJob extends BaseJob {
+     company: string;
+     location: string;
+     // Add any site-specific fields
+   }
+   ```
+
+2. **Create crawler** in `src/sites/<site>/<site>-crawler.ts`:
+   - Export `async function crawl<Site>(): Promise<SiteJob[]>`
+   - Use CheerioCrawler from Crawlee
+   - Max 20 requests total
+   - For sites requiring detail page visits (like Indeed), use two-stage crawl
+
+3. **Create prompts** in `src/sites/<site>/prompts/`:
+   - `filter.md` — LLM filtering prompt with `{{jobs}}` placeholder
+   - `job-summary.md` — LLM job summary prompt with `{{passingJobs}}` placeholder
+   - Note: `report.md` is no longer used (code-driven reports)
+
+4. **Create SiteConfig** in `src/sites/<site>/index.ts`:
+   ```ts
+   export const siteConfig: SiteConfig<SiteJob> = {
+     name: "site",
+     crawl: crawlSite,
+     jobSchema,
+     evaluationSchema,
+     prompts: {
+       filter: filterPrompt,
+       report: "",  // Empty - using code-driven reports
+       jobSummary: jobSummaryPrompt,
+     },
+   };
+   ```
+
+5. **Register site** in `src/main.ts`:
+   - Import the site config
+   - Add to `sites` object
+   - Support CLI argument `--site <site>` for selection
+
+6. **Update exports** in `src/types/index.ts`:
+   - Export the new site type
+
+7. **Update documentation**:
+   - `README.md` — Add site to quick start and pipeline description
+   - `AGENTS.md` — Update file structure and patterns
+   - `src/sites/README.md` — Document site-specific implementation
+   - `src/types/README.md` — Document the new type
+
 ## File Structure
 
 ```
 src/
-  main.ts                          — Entry point, orchestrates the full pipeline
+  main.ts                          — Entry point, orchestrates the full pipeline, supports --site flag
   config.ts                        — ModelConfig interface, modelConfigs map, shared settings
   eval.ts                          — Single-model golden dataset evaluation runner
   compare-models.ts                — Multi-model benchmark, ranks by PASS F1
   types/
     base.ts                        — BaseJob interface (jobTitle, jobURL, company, location, date, jobDetails[])
     WuzzufJob.ts                   — Extends BaseJob with company, location, tags
+    IndeedJob.ts                   — Extends BaseJob with company, location
     evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type (status, reason, experienceLevel?, skills?)
     site-config.ts                 — SiteConfig<T> interface (prompts: filter, report, jobSummary)
     index.ts                       — Re-exports all types
@@ -108,7 +162,12 @@ src/
       wuzzuf-crawler.ts            — Cheerio crawler, 4 search URLs, max 20 requests
       evals/golden-dataset.ts      — 40 hand-labeled jobs (12 PASS, 27 FAIL, 1 POTENTIAL_MATCH)
       prompts/filter.md            — LLM filtering prompt with {{jobs}} placeholder
-      prompts/report.md            — LLM report generation prompt with {{evaluatedJobs}} placeholder
+      prompts/report.md            — LLM report generation prompt with {{evaluatedJobs}} placeholder (legacy, unused)
+      prompts/job-summary.md       — LLM job summary prompt
+    indeed/
+      index.ts                     — SiteConfig for Indeed Egypt
+      indeed-crawler.ts            — Two-stage crawler (search + detail pages), max 20 requests
+      prompts/filter.md            — LLM filtering prompt with {{jobs}} placeholder
       prompts/job-summary.md       — LLM job summary prompt
   helpers/
     extractTextWithLineBreaks.ts   — HTML → text with preserved line breaks

@@ -12,7 +12,7 @@ interface SiteConfig<T extends BaseJob> {
   jobSchema: ZodSchema;            // Zod schema for individual job structure
   prompts: {
     filter: string;                // Filter prompt template with {{jobs}} placeholder
-    report: string;                // Report prompt template with {{evaluatedJobs}} placeholder
+    report: string;                // Report prompt template with {{evaluatedJobs}} placeholder (legacy, unused)
     jobSummary: string;            // Prompt for generating detailed job summaries
   };
 }
@@ -28,8 +28,23 @@ interface SiteConfig<T extends BaseJob> {
 | `wuzzuf-crawler.ts` | Cheerio crawler targeting 4 search URLs (react, nextjs, vue, node). Extracts: jobTitle, jobURL, date, company, location, tags, jobDetails. Max 20 requests. |
 | `evals/golden-dataset.ts` | 40 hand-labeled jobs for evaluation. |
 | `prompts/filter.md` | LLM filtering prompt with 6 rule categories (title, internship, tech stack, experience, role type, location). |
-| `prompts/report.md` | LLM report generation prompt. |
+| `prompts/report.md` | LLM report generation prompt (legacy, unused - reports are now code-driven). |
 | `prompts/job-summary.md` | LLM prompt for generating detailed job summaries. |
+
+### Indeed Egypt (`src/sites/indeed/`)
+
+| File | Purpose |
+|------|---------|
+| `index.ts` | SiteConfig definition. Loads prompt templates from `prompts/` via `fs.readFile`. Defines Zod schemas for IndeedJob structure and LLM evaluation response. |
+| `indeed-crawler.ts` | Two-stage crawler using CheerioCrawler. Stage 1: Extract job cards from search page. Stage 2: Visit each job detail page for full description. Max 20 requests total. |
+| `prompts/filter.md` | LLM filtering prompt with 6 rule categories (title, internship, tech stack, experience, role type, location). |
+| `prompts/job-summary.md` | LLM prompt for generating detailed job summaries. |
+
+**Key Differences from Wuzzuf:**
+- Indeed uses a fixed search URL (not configurable)
+- Two-stage crawl: search page → individual detail pages
+- Stores job description as one string (no `tags` field)
+- Report prompt is empty (code-driven reports only)
 
 ## Adding a New Site
 

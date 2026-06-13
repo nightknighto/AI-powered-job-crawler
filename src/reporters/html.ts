@@ -1,6 +1,7 @@
 import { exec } from "child_process";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import { Marked } from "marked";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ReportContext, Reporter } from "./types.js";
@@ -39,7 +40,7 @@ export class HtmlReporter implements Reporter {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Job Search Report — ${ctx.timestamp.toLocaleDateString()}</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #f8f9fa; color: #212529; max-width: 1400px; margin: 0 auto; }
   h1 { margin-bottom: 8px; }
   .meta { color: #6c757d; margin-bottom: 32px; }
@@ -90,7 +91,7 @@ ${failingSorted.map((j) => this.tableRow(j)).join("\n")}
 </table>
 </details>
 
-${summary ? `<h2>📝 Detailed Summary</h2><div class="summary-section">${this.escapeHtml(summary).replace(/\n/g, "<br>")}</div>` : ""}
+${summary ? `<h2>📝 Detailed Summary</h2><div class="summary-section">${new Marked().parse(summary)}</div>` : ""}
 </body>
 </html>`;
     }

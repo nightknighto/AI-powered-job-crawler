@@ -6,7 +6,8 @@ Runtime-validated type definitions for job listings, evaluation results, site co
 
 ```
 BaseJob (base.ts)
-  └── WuzzufJob (WuzzufJob.ts)
+  ├── WuzzufJob (WuzzufJob.ts)
+  └── IndeedJob (IndeedJob.ts)
 ```
 
 Reporter types are defined in `src/reporters/types.ts` — see [`src/reporters/README.md`](../reporters/README.md).
@@ -35,6 +36,15 @@ Extends `BaseJob` with Wuzzuf-specific overrides:
 | `company` | `string` | Company name (overrides BaseJob) |
 | `location` | `string` | Job location (overrides BaseJob) |
 | `tags` | `string` | Comma-separated tag strings (e.g. `'Full Time, Remote'`) |
+
+### `IndeedJob` (`IndeedJob.ts`)
+
+Extends `BaseJob` with Indeed-specific overrides:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `company` | `string` | Company name (overrides BaseJob) |
+| `location` | `string` | Job location (overrides BaseJob) |
 
 ### `JobStatus` (`evaluated-job.ts`)
 

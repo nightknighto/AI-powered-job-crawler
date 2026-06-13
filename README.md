@@ -1,6 +1,6 @@
 # Job Searches — AI-powered job filtering with local LLMs
 
-Crawls job listings from Wuzzuf, filters them through a local LLM (Ollama) with structured JSON output, and generates markdown reports in your terminal.
+Crawls job listings from Wuzzuf and Indeed Egypt, filters them through a local LLM (Ollama) with structured JSON output, and generates markdown reports in your terminal.
 
 ## Quick Start
 
@@ -13,8 +13,11 @@ Crawls job listings from Wuzzuf, filters them through a local LLM (Ollama) with 
 
 ```bash
 pnpm install
-pnpm start          # crawl → evaluate → summarize → display
+pnpm start          # crawl → evaluate → summarize → display (defaults to Wuzzuf)
+pnpm start --site indeed  # crawl Indeed Egypt instead
 ```
+
+**Available sites:** `wuzzuf`, `indeed`
 
 ## Architecture
 
@@ -52,12 +55,12 @@ flowchart LR
 
 | Stage | Description |
 |-------|-------------|
-| **Crawl** | Cheerio crawler fetches jobs from 4 Wuzzuf search URLs (max 20 requests) |
+| **Crawl** | Cheerio crawler fetches jobs from job boards (Wuzzuf: 4 URLs max 20 requests; Indeed Egypt: 2-stage, max 20 requests) |
 | **Evaluate** | Sends jobs to Ollama LLM with filter prompt → parses structured JSON with Zod |
 | **Summarize** | LLM-generated summary for passing jobs |
 | **Reporters** | Composable output — render to terminal tables, cards, summary, HTML, or markdown files |
 
-See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details and [`src/reporters/README.md`](src/reporters/README.md) for reporter details.
+See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`src/reporters/README.md`](src/reporters/README.md) for reporter details, and [`src/sites/README.md`](src/sites/README.md) for site-specific implementation details.
 
 ## Evaluation System
 
