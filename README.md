@@ -14,7 +14,7 @@ Crawls job listings from Wuzzuf and Indeed Egypt, filters them through a local L
 ```bash
 pnpm install
 pnpm start          # crawl → evaluate → summarize → display (defaults to Wuzzuf)
-pnpm start --site indeed  # crawl Indeed Egypt instead
+pnpm start indeed   # crawl Indeed Egypt instead
 ```
 
 **Available sites:** `wuzzuf`, `indeed`
@@ -30,7 +30,7 @@ flowchart LR
   end
 
   subgraph Eval System
-    E[Golden Dataset<br/>40 labeled jobs] --> F[Compare Engine<br/>Precision/Recall/F1]
+    E[Golden Dataset<br/>54 labeled jobs] --> F[Compare Engine<br/>Precision/Recall/F1]
     G[Structural Heuristics<br/>6 checks] --> F
   end
 
@@ -64,10 +64,14 @@ See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`s
 
 ## Evaluation System
 
-- **Golden dataset**: 40 hand-labeled jobs (12 PASS, 27 FAIL, 1 POTENTIAL_MATCH) compared against LLM output
+- **Unified golden dataset**: 54 hand-labeled jobs across Wuzzuf (40) and Indeed (14) for cross-site compatibility
+  - 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH
+  - Aggregated by [`src/evals/combined-golden-dataset.ts`](src/evals/combined-golden-dataset.ts) from per-site files in `src/sites/<site>/evals/`
+  - Each entry is a `GoldenEntry<T extends BaseJob>` (schema-agnostic, works with all sites)
 - **Metrics**: Precision, recall, F1 per class — primary metric is PASS F1 (minority class)
 - **Structural heuristics**: 6 checks catch dropped jobs, invalid statuses, empty reasons, etc.
 - **Threshold**: 80% accuracy target
+- **Shared filter resources**: Evaluation uses the unified filter prompt ([`src/pipeline/prompts.ts`](src/pipeline/prompts.ts) → `src/pipeline/prompts/filter.md`) and the shared `jobEvaluationSchema` ([`src/types/evaluated-job.ts`](src/types/evaluated-job.ts)) — no per-site filter prompt or schema
 
 See [`src/evals/README.md`](src/evals/README.md) for details.
 
@@ -132,8 +136,8 @@ storage/               — Crawlee internal state (gitignored, auto-generated)
 ## Adding a New Site
 
 1. Create a new directory under `src/sites/<site-name>/`
-2. Implement a crawler and define `BaseJob`-extending types
-3. Write filter and report prompt templates with `{{placeholder}}` syntax
+2. Implement a crawler and define a `BaseJob`-extending type
+3. Write a `job-summary.md` prompt template with `{{passingJobs}}` substitution (filter prompt is shared site-wide at `src/pipeline/prompts/filter.md`)
 4. Export a `SiteConfig<T>` object from `index.ts`
 5. Register it in `main.ts`
 

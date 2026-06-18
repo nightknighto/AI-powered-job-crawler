@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ModelConfig } from "../config.js";
 import { GoldenComparisonResult } from "./golden.js";
 import { HeuristicResult } from "./structural.js";
-import { GoldenEntry } from "../sites/wuzzuf/evals/golden-dataset.js";
+import { GoldenEntry } from "../types/GoldenEntry.js";
 
 const EVAL_RESULTS_DIR = "eval-results";
 

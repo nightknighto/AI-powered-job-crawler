@@ -12,14 +12,29 @@ export interface ModelConfig {
 
 /** Pre-configured model variants keyed by camelCase identifier. */
 export const modelConfigs = {
-    qwenReason: {
+    qwenReason2: {
         model: "qwen-reason",
         temperature: 0.2,
         think: false,
     },
-    qwenSmall: {
+    qwenReason0: {
+        model: "qwen-reason",
+        temperature: 0.0,
+        think: false,
+    },
+    qwenSmall2: {
         model: "qwen-small",
         temperature: 0.2,
+        think: false,
+    },
+    qwenSmall1: {
+        model: "qwen-small",
+        temperature: 0.1,
+        think: false,
+    },
+    qwenSmall0: {
+        model: "qwen-small",
+        temperature: 0.0,
         think: false,
     },
     // gemma4: {

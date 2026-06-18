@@ -1,13 +1,13 @@
 import ollama from "ollama";
 import { z } from "zod";
-import { goldenDataset } from "./sites/wuzzuf/evals/golden-dataset.js";
-import { wuzzufConfig } from "./sites/wuzzuf/index.js";
 import { modelConfigs, ModelConfigKey, shared } from "./config.js";
 import { compareGolden, GoldenComparisonResult } from "./evals/golden.js";
 import { runStructuralHeuristics, HeuristicResult } from "./evals/structural.js";
 import { writeCompareReport, CompareModelDetail } from "./evals/report-writer.js";
-import { EvaluatedJob } from "./types/evaluated-job.js";
-import { WuzzufJob } from "./types/WuzzufJob.js";
+import { EvaluatedJob, jobEvaluationSchema, JobStatus } from "./types/evaluated-job.js";
+import { getCombinedGoldenDataset } from "./evals/combined-golden-dataset.js";
+import { BaseJob } from "./types/base.js";
+import { unifiedFilterPrompt } from "./pipeline/prompts.js";
 
 interface ModelResult {
     modelKey: string;
@@ -26,9 +26,9 @@ interface ModelResult {
 
 async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
     const config = modelConfigs[modelKey];
-    const jobs: WuzzufJob[] = goldenDataset.map((entry) => entry.job);
+    const jobs = getCombinedGoldenDataset().map((entry) => entry.job);
 
-    const filterPrompt = wuzzufConfig.prompts.filter.replace(
+    const filterPrompt = unifiedFilterPrompt.replace(
         "{{jobs}}",
         JSON.stringify(jobs, null, 2),
     );
@@ -37,15 +37,65 @@ async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
         model: config.model,
         think: config.think,
         messages: [{ role: "user", content: filterPrompt }],
-        format: z.toJSONSchema(wuzzufConfig.evaluationSchema),
+        format: z.toJSONSchema(jobEvaluationSchema),
         options: { temperature: config.temperature },
     });
 
-    const parsed = wuzzufConfig.evaluationSchema.parse(JSON.parse(response.message.content));
-    const aiOutput: EvaluatedJob<WuzzufJob>[] = parsed.map((item: any) => {
-        const { status, reason, ...job } = item;
-        return { job: job as WuzzufJob, status, reason };
-    });
+    // Log timing and token usage
+    console.log(`⏱️  Load: ${(response.load_duration / 1_000_000_000).toFixed(1)}s | Prompt Eval: ${(response.prompt_eval_duration / 1_000_000_000).toFixed(1)}s |
+    Eval: ${(response.eval_duration / 1_000_000_000).toFixed(1)}s | Total: ${(response.total_duration / 1_000_000_000).toFixed(1)}s`);
+    console.log(`📝  Input Tokens: ${response.prompt_eval_count} | Output Tokens: ${response.eval_count}`);
+
+    let parsed: ReturnType<typeof jobEvaluationSchema.parse>;
+    try {
+        parsed = jobEvaluationSchema.parse(JSON.parse(response.message.content.replaceAll('```', '')));
+    } catch (err) {
+        console.warn("⚠️  Failed to parse LLM output:");
+        console.warn(err);
+        console.warn("Raw LLM response:");
+        console.warn(response.message.content);
+        process.exit(1);
+    }
+
+    const jobByUrl = new Map<string, BaseJob>();
+    for (const job of jobs) {
+        jobByUrl.set(job.jobURL, job);
+    }
+
+    const inputUrls = new Set(jobs.map((j) => j.jobURL));
+    const outputUrls = new Set<string>();
+    const aiOutput: EvaluatedJob<BaseJob>[] = [];
+
+    for (const item of parsed) {
+        const { jobURL, status, reason, experienceLevel, skills } = item
+
+        if (!inputUrls.has(jobURL)) {
+            console.warn(`⚠️  LLM returned unknown jobURL not in input, skipping: ${jobURL}`);
+            continue;
+        }
+        if (outputUrls.has(jobURL)) {
+            console.warn(`⚠️  LLM returned duplicate jobURL, skipping: ${jobURL}`);
+            continue;
+        }
+
+        const job = jobByUrl.get(jobURL);
+        if (!job) {
+            console.warn(`⚠️  jobURL lookup failed (should not happen), skipping: ${jobURL}`);
+            continue;
+        }
+
+        outputUrls.add(jobURL);
+        aiOutput.push({ job, status, reason, experienceLevel, skills });
+    }
+
+    if (outputUrls.size !== inputUrls.size) {
+        const missing = [...inputUrls].filter((url) => !outputUrls.has(url));
+        console.warn(
+            `⚠️  LLM dropped ${missing.length} job(s) from output: ${missing.join(", ")}`,
+        );
+    }
+
+    const goldenDataset = getCombinedGoldenDataset();
 
     const comparison = compareGolden(goldenDataset, aiOutput);
 
@@ -118,6 +168,7 @@ async function main() {
     const models = Object.keys(modelConfigs) as ModelConfigKey[];
     const results: ModelResult[] = [];
 
+    const goldenDataset = getCombinedGoldenDataset();
     console.log(`🔄 Running eval for ${models.length} models on ${goldenDataset.length} jobs...\n`);
 
     for (const modelKey of models) {

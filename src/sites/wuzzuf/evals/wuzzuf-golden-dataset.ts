@@ -1,21 +1,11 @@
+import { GoldenEntry } from "../../../types/GoldenEntry.js";
 import { WuzzufJob } from "../../../types/WuzzufJob.js";
-import { JobStatus } from "../../../types/evaluated-job.js";
-
-/** A single hand-labeled entry in the golden dataset for eval benchmarking. */
-export interface GoldenEntry {
-    /** The job listing to feed into the LLM. */
-    job: WuzzufJob;
-    /** The expected evaluation status (ground truth). */
-    expectedStatus: JobStatus;
-    /** Keywords that should appear in the AI's reason array */
-    expectedReasonKeywords: string[];
-}
 
 // ─────────────────────────────────────────────────────────
 // 9 real jobs from jobs.json, hand-labeled
 // ─────────────────────────────────────────────────────────
 
-const realJobs: GoldenEntry[] = [
+const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #1 — Senior Full Stack Developer (Doha, Qatar) → FAIL: Senior title + non-Egypt remote OK but Senior is hard reject
     {
         job: {
@@ -183,7 +173,7 @@ const realJobs: GoldenEntry[] = [
 // 23 synthetic jobs covering uncovered filter rules
 // ─────────────────────────────────────────────────────────
 
-const syntheticJobs: GoldenEntry[] = [
+const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // ─── Internship Filter ───
 
     // #10 — Internship in title
@@ -758,4 +748,4 @@ const syntheticJobs: GoldenEntry[] = [
 ];
 
 /** Hand-labeled dataset of 40 jobs (9 real + 31 synthetic) for benchmarking LLM filter accuracy. */
-export const goldenDataset: GoldenEntry[] = [...realJobs, ...syntheticJobs];
+export const wuzzufGoldenDataset = [...realJobs, ...syntheticJobs];

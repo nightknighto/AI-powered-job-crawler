@@ -113,7 +113,7 @@ ${summary ? `<h2>📝 Detailed Summary</h2><div class="summary-section">${new Ma
     private openInBrowser(filePath: string): void {
         const absolutePath = join(process.cwd(), filePath);
         const command =
-            process.platform === "win32" ? `start "" "${absolutePath}"` :
+            process.platform === "win32" ? `start "chrome" "${absolutePath}"` :
                 process.platform === "darwin" ? `open "${absolutePath}"` :
                     `xdg-open "${absolutePath}"`;
 

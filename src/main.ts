@@ -7,7 +7,7 @@ import { createReporters } from "./reporters/index.js";
 import { modelConfigs, shared } from "./config.js";
 
 // Get site from CLI args (default: wuzzuf)
-const siteName = process.argv[2] === '--site' ? process.argv[3] : 'wuzzuf';
+const siteName = process.argv[2] || 'wuzzuf';
 
 const sites = {
     wuzzuf: wuzzufConfig,
@@ -23,7 +23,7 @@ if (!site) {
 
 console.log(`Using site: ${site.name}`);
 
-const model = modelConfigs.qwenReason;
+const model = modelConfigs.qwenReason0;
 
 const jobs = await crawl(site);
 const evaluated = await evaluate(site, jobs, model);

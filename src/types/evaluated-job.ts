@@ -18,3 +18,14 @@ export interface EvaluatedJob<T> {
     /** Core tech stack identified by the LLM (e.g. ["React", "TypeScript"]). */
     skills?: string[];
 }
+
+
+/** Shared Zod schema for LLM filter output � used across all sites. */
+export const jobEvaluationSchema = z.object({
+    jobURL: z.string(),
+    reason: z.array(z.string()),
+    experienceLevel: z.string(),
+    skills: z.array(z.string()),
+    status: JobStatus,
+}).array();
+

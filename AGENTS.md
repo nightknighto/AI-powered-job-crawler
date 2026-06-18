@@ -24,25 +24,27 @@ Sites are abstracted behind `SiteConfig<T extends BaseJob>`:
 interface SiteConfig<T extends BaseJob> {
   name: string;
   crawl: () => Promise<T[]>;
-  evaluationSchema: ZodSchema;
-  jobSchema: ZodSchema;
-  prompts: { filter: string; report: string; jobSummary: string };
+  jobSchema: ZodType<T>;
+  prompts: { jobSummary: string };
 }
 ```
 
 To add a site, implement this interface and register it in `main.ts`.
 
+> The **filter prompt** and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`unifiedFilterPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering behaves identically across all sites.
+
 ### Prompt templates with `{{placeholder}}` substitution
 
-Prompts are markdown files in `src/sites/<site>/prompts/`. At runtime, `{{jobs}}` and `{{evaluatedJobs}}` placeholders are replaced with JSON data.
+- The **filter prompt** is shared site-wide at `src/pipeline/prompts/filter.md`. At runtime, the `{{jobs}}` placeholder is replaced with the JSON array of crawled jobs.
+- The **job-summary prompt** is per-site at `src/sites/<site>/prompts/job-summary.md`. At runtime, the `{{passingJobs}}` placeholder is replaced with the JSON array of passing evaluated jobs.
 
 ### Zod schemas for LLM output validation
 
-LLM output is validated with Zod schemas. `z.toJSONSchema()` converts them to JSON Schema for Ollama's `structured_outputs` feature.
+LLM output is validated by the shared `jobEvaluationSchema` in `src/types/evaluated-job.ts`. `z.toJSONSchema()` converts it to JSON Schema for Ollama's `structured_outputs` feature. Per-site schemas only validate raw job shape (`jobSchema`), never the LLM response.
 
 ### Golden dataset for eval
 
-40 hand-labeled jobs in `src/sites/wuzzuf/evals/golden-dataset.ts` with expected statuses. The `compareGolden()` function matches by URL and computes precision/recall/F1 per class.
+The combined golden dataset (54 hand-labeled jobs: 40 Wuzzuf + 14 Indeed; 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH) is aggregated by `src/evals/combined-golden-dataset.ts` from per-site files under `src/sites/<site>/evals/`. The `compareGolden()` function matches by URL and computes precision/recall/F1 per class.
 
 ### Model config pattern
 
@@ -87,9 +89,8 @@ To add a new job board site:
    - For sites requiring detail page visits (like Indeed), use two-stage crawl
 
 3. **Create prompts** in `src/sites/<site>/prompts/`:
-   - `filter.md` — LLM filtering prompt with `{{jobs}}` placeholder
    - `job-summary.md` — LLM job summary prompt with `{{passingJobs}}` placeholder
-   - Note: `report.md` is no longer used (code-driven reports)
+   - Do **not** create a per-site `filter.md` — the filter prompt is shared site-wide at `src/pipeline/prompts/filter.md`
 
 4. **Create SiteConfig** in `src/sites/<site>/index.ts`:
    ```ts
@@ -97,10 +98,7 @@ To add a new job board site:
      name: "site",
      crawl: crawlSite,
      jobSchema,
-     evaluationSchema,
      prompts: {
-       filter: filterPrompt,
-       report: "",  // Empty - using code-driven reports
        jobSummary: jobSummaryPrompt,
      },
    };
@@ -109,12 +107,14 @@ To add a new job board site:
 5. **Register site** in `src/main.ts`:
    - Import the site config
    - Add to `sites` object
-   - Support CLI argument `--site <site>` for selection
+   - Site is selected via the first positional CLI arg (`pnpm start <site>`)
 
 6. **Update exports** in `src/types/index.ts`:
    - Export the new site type
 
-7. **Update documentation**:
+7. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and append it in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up.
+
+8. **Update documentation**:
    - `README.md` — Add site to quick start and pipeline description
    - `AGENTS.md` — Update file structure and patterns
    - `src/sites/README.md` — Document site-specific implementation
@@ -124,7 +124,7 @@ To add a new job board site:
 
 ```
 src/
-  main.ts                          — Entry point, orchestrates the full pipeline, supports --site flag
+  main.ts                          — Entry point, orchestrates the full pipeline, site selected via first positional CLI arg
   config.ts                        — ModelConfig interface, modelConfigs map, shared settings
   eval.ts                          — Single-model golden dataset evaluation runner
   compare-models.ts                — Multi-model benchmark, ranks by PASS F1
@@ -132,14 +132,18 @@ src/
     base.ts                        — BaseJob interface (jobTitle, jobURL, company, location, date, jobDetails[])
     WuzzufJob.ts                   — Extends BaseJob with company, location, tags
     IndeedJob.ts                   — Extends BaseJob with company, location
-    evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type (status, reason, experienceLevel?, skills?)
-    site-config.ts                 — SiteConfig<T> interface (prompts: filter, report, jobSummary)
+    evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type, shared jobEvaluationSchema (status, reason, experienceLevel?, skills?)
+    site-config.ts                 — SiteConfig<T> interface (prompts: jobSummary only — filter prompt is site-wide)
+    GoldenEntry.ts                 — GoldenEntry<T> interface (job, expectedStatus, expectedReasonKeywords) for eval golden dataset
     index.ts                       — Re-exports all types
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
-    evaluate.ts                    — LLM evaluation with Zod validation + structural heuristics
+    evaluate.ts                    — LLM evaluation with Zod validation + structural heuristics (uses unifiedFilterPrompt + jobEvaluationSchema)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
+    prompts.ts                     — Loads the unified filter prompt from prompts/filter.md and exports unifiedFilterPrompt
+    prompts/
+      filter.md                    — Shared LLM filter prompt with {{jobs}} placeholder (used by all sites)
   reporters/
     types.ts                       — Reporter interface, ReportContext, ReportOutput types
     composite.ts                   — CompositeReporter wraps multiple reporters, shares context
@@ -153,6 +157,7 @@ src/
     fixtures/
       sample-evaluated-jobs.ts     — 6 sample EvaluatedJob<WuzzufJob> for testing reporters
   evals/
+    combined-golden-dataset.ts     — Aggregates per-site golden datasets into one array for eval/compare
     golden.ts                      — Golden dataset comparison engine (precision/recall/F1 per class)
     structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)
     report-writer.ts               — Writes eval/compare results to eval-results/ directory
@@ -160,14 +165,14 @@ src/
     wuzzuf/
       index.ts                     — SiteConfig for Wuzzuf
       wuzzuf-crawler.ts            — Cheerio crawler, 4 search URLs, max 20 requests
-      evals/golden-dataset.ts      — 40 hand-labeled jobs (12 PASS, 27 FAIL, 1 POTENTIAL_MATCH)
-      prompts/filter.md            — LLM filtering prompt with {{jobs}} placeholder
-      prompts/report.md            — LLM report generation prompt with {{evaluatedJobs}} placeholder (legacy, unused)
+      evals/wuzzuf-golden-dataset.ts — 40 hand-labeled jobs (13 PASS, 26 FAIL, 1 POTENTIAL_MATCH)
+      prompts/filter.old.md        — Historical per-site filter prompt, kept for reference (not loaded at runtime)
+      prompts/report.old.md        — Historical per-site report prompt, kept for reference (not loaded at runtime)
       prompts/job-summary.md       — LLM job summary prompt
     indeed/
       index.ts                     — SiteConfig for Indeed Egypt
       indeed-crawler.ts            — Two-stage crawler (search + detail pages), max 20 requests
-      prompts/filter.md            — LLM filtering prompt with {{jobs}} placeholder
+      evals/indeed-golden-dataset.ts — 14 hand-labeled jobs (2 PASS, 12 FAIL)
       prompts/job-summary.md       — LLM job summary prompt
   helpers/
     extractTextWithLineBreaks.ts   — HTML → text with preserved line breaks
@@ -231,8 +236,8 @@ Each accomplishment should follow this pattern:
 
 ## Never Change Without Explicit Request
 
-- **Golden dataset labels** — 40 hand-labeled jobs in `src/sites/wuzzuf/evals/golden-dataset.ts`; these are the ground truth
-- **Filter rules** in `src/sites/wuzzuf/prompts/filter.md` — these define "correct" behavior
+- **Golden dataset labels** — 54 hand-labeled jobs aggregated by `src/evals/combined-golden-dataset.ts` from `src/sites/<site>/evals/<site>-golden-dataset.ts`; these are the ground truth
+- **Filter rules** in `src/pipeline/prompts/filter.md` — these define "correct" behavior
 - **Structural heuristic checks** in `src/evals/structural.ts` — these are rule-based, not AI-generated
 
 ## Common Gotchas
@@ -241,7 +246,8 @@ Each accomplishment should follow this pattern:
 - **Zod v4 API differences from v3** — use `z.toJSONSchema()` not `zodToJsonSchema()`, and note other v4 breaking changes
 - **`marked.use(markedTerminal())`** needs `@ts-ignore` — types are mismatched but it works at runtime
 - **Golden dataset job matching is by URL** — synthetic/test jobs must use unique fake URLs
-- **Golden dataset jobs are numbered #1–#40 in comments** — keep numbering in sync when adding/removing jobs
+- **Wuzzuf golden jobs are numbered #1–#40 in comments** — keep numbering in sync when adding/removing jobs
+- **Combined dataset is widened to `GoldenEntry<BaseJob>`** — per-site files preserve their concrete type (`GoldenEntry<WuzzufJob>` etc.) but `getCombinedGoldenDataset()` returns the base type
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl
 
 ## Filter Rules Reference

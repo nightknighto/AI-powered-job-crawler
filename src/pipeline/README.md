@@ -15,10 +15,10 @@ Generic crawl orchestration using Crawlee CheerioCrawler. Delegates to the site'
 ### 2. `evaluate.ts`
 
 ```ts
-evaluate<T extends BaseJob>(jobs: T[], config: SiteConfig<T>, modelKey: ModelConfigKey): Promise<EvaluatedJob<T>[]>
+evaluate<T extends BaseJob>(site: SiteConfig<T>, jobs: T[], modelConfig: ModelConfig): Promise<EvaluatedJob<T>[]>
 ```
 
-Sends jobs to Ollama LLM with the filter prompt, parses structured JSON response using Zod validation. Each job gets a status (`PASS`/`FAIL`/`POTENTIAL_MATCH`) and an array of reason strings. Uses `config.evaluationSchema` to validate the response and `config.prompts.filter` as the prompt template.
+Sends jobs to Ollama LLM with the **shared** filter prompt, parses structured JSON response using Zod validation. Each job gets a status (`PASS`/`FAIL`/`POTENTIAL_MATCH`) and an array of reason strings. Uses the unified `unifiedFilterPrompt` (from `src/pipeline/prompts.ts`) and the shared `jobEvaluationSchema` (from `src/types/evaluated-job.ts`) — these are intentionally not part of `SiteConfig` so filtering behaves identically across all sites.
 
 ### 3. `generate-summary.ts`
 

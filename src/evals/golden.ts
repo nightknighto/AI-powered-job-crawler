@@ -1,6 +1,6 @@
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob, JobStatus } from "../types/evaluated-job.js";
-import { GoldenEntry } from "../sites/wuzzuf/evals/golden-dataset.js";
+import { GoldenEntry } from "../types/GoldenEntry.js";
 
 /** Result of comparing a single golden-dataset job against AI output. */
 export interface PerJobResult {
@@ -136,8 +136,10 @@ export function compareGolden<T extends BaseJob>(
 
 /**
  * Pretty-print the golden comparison results.
+ * @param result - The comparison result to print.
+ * @param failedOnly - When true, only prints jobs that mismatched or were dropped.
  */
-export function printGoldenResults(result: GoldenComparisonResult): void {
+export function printGoldenResults(result: GoldenComparisonResult, failedOnly: boolean = false): void {
     console.log("\n═══════════════════════════════════════════════════");
     console.log("  GOLDEN DATASET EVALUATION RESULTS");
     console.log("═══════════════════════════════════════════════════\n");
@@ -145,6 +147,9 @@ export function printGoldenResults(result: GoldenComparisonResult): void {
     // Per-job results
     console.log("── Per-Job Results ──\n");
     for (const job of result.perJob) {
+        if (failedOnly && job.statusMatch && !job.dropped) {
+            continue;
+        }
         const statusIcon = job.statusMatch ? "✅" : "❌";
         const droppedTag = job.dropped ? " [DROPPED]" : "";
         const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;

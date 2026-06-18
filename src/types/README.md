@@ -10,6 +10,13 @@ BaseJob (base.ts)
   └── IndeedJob (IndeedJob.ts)
 ```
 
+Generic wrappers:
+
+```
+EvaluatedJob<T>     (evaluated-job.ts)  — original job + AI verdict
+GoldenEntry<T>      (GoldenEntry.ts)    — original job + expected label (for eval)
+```
+
 Reporter types are defined in `src/reporters/types.ts` — see [`src/reporters/README.md`](../reporters/README.md).
 
 ## Types
@@ -46,19 +53,22 @@ Extends `BaseJob` with Indeed-specific overrides:
 | `company` | `string` | Company name (overrides BaseJob) |
 | `location` | `string` | Job location (overrides BaseJob) |
 
-### `JobStatus` (`evaluated-job.ts`)
+### `SiteConfig<T extends BaseJob>` (`site-config.ts`)
 
-Zod enum with three values:
+Generic site configuration. The filter prompt and LLM-output schema are intentionally **not** part of `SiteConfig` — they are unified across all sites (see [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) and `jobEvaluationSchema` below).
 
-| Value | Meaning |
-|-------|---------|
-| `PASS` | Job matches all filter criteria |
-| `FAIL` | Job should be rejected |
-| `POTENTIAL_MATCH` | Borderline case worth reviewing |
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Display name |
+| `crawl` | `() => Promise<T[]>` | Crawling function |
+| `jobSchema` | `ZodType<T>` | Zod schema for an individual job structure |
+| `prompts` | `{ jobSummary: string }` | Per-site prompt templates with `{{placeholder}}` substitution |
 
-### `EvaluatedJob<T>` (`evaluated-job.ts`)
+### `JobStatus` / `EvaluatedJob<T>` / `jobEvaluationSchema` (`evaluated-job.ts`)
 
-Generic wrapper for evaluated jobs:
+`JobStatus` is the Zod enum `{ PASS | FAIL | POTENTIAL_MATCH }`.
+
+`EvaluatedJob<T>` wraps an original job with its AI verdict:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -68,17 +78,17 @@ Generic wrapper for evaluated jobs:
 | `experienceLevel?` | `string` | Experience level extracted by the LLM (e.g. "2+ years") |
 | `skills?` | `string[]` | Core tech stack identified by the LLM (e.g. ["React", "TypeScript"]) |
 
-### `SiteConfig<T extends BaseJob>` (`site-config.ts`)
+`jobEvaluationSchema` is the shared Zod schema for the LLM's filter output. It is converted to JSON Schema via `z.toJSONSchema()` and passed to Ollama's structured-output feature. Used by `src/pipeline/evaluate.ts`, `src/eval.ts`, and `src/compare-models.ts` — **never overridden per site**.
 
-Generic site configuration:
+### `GoldenEntry<T extends BaseJob = BaseJob>` (`GoldenEntry.ts`)
+
+A single hand-labeled entry in the golden dataset for eval benchmarking:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Display name |
-| `crawl` | `() => Promise<T[]>` | Crawling function |
-| `evaluationSchema` | `ZodSchema` | Zod schema for LLM output validation |
-| `jobSchema` | `ZodSchema` | Zod schema for job structure |
-| `prompts` | `{ filter: string, report: string, jobSummary: string }` | Prompt templates with `{{placeholder}}` substitution |
+| `job` | `T` | The job listing to feed into the LLM |
+| `expectedStatus` | `JobStatus` | The expected evaluation status (ground truth) |
+| `expectedReasonKeywords` | `string[]` | Keywords that should appear in the AI's `reason` array |
 
 ## Zod Schemas vs TypeScript Interfaces
 
@@ -87,7 +97,7 @@ Generic site configuration:
 | Purpose | Static type shape for IDE tooling | Runtime validation of LLM responses |
 | Timing | Compile-time only | Runtime |
 | LLM integration | N/A | Converted to JSON Schema via `z.toJSONSchema()` for Ollama structured output |
-| Usage in SiteConfig | Type parameters (`T extends BaseJob`) | `evaluationSchema` validates full LLM response array, `jobSchema` validates individual job objects |
+| Usage | Type parameters (`T extends BaseJob`) | `jobEvaluationSchema` validates the full LLM response array; `jobSchema` validates individual job objects |
 
 Both exist because TypeScript types are erased at compile time — Zod schemas provide the runtime validation needed when processing LLM responses.
 
