@@ -32,7 +32,11 @@ Analyze both the top-level metadata and the complete text details provided insid
   - Data Analyst / Data Scientist / Data Engineer
   - Scrum Master / Agile Coach
   - Technical Support / IT Support
-  The presence of JavaScript, TypeScript, or any JS/TS framework in a QA or non-dev role does NOT make it acceptable.
+  - Vendor platform / ITSM / low-code / no-code specialist roles — e.g., ServiceNow, Salesforce, SAP, Workday, Microsoft Power Platform (Power Apps/Power Automate), Dynamics 365, OutSystems, Mendix — even if the title includes "Developer," "Engineer," or "Integration Specialist"
+
+  **DevOps/Infrastructure Engineer is defined narrowly:** it means building/maintaining CI/CD pipelines, cloud infrastructure (AWS/GCP/Azure), containerization, or IaC for software the company builds in-house. It does NOT include configuring, integrating, or scripting within a third-party SaaS/ITSM/ERP platform.
+
+  The presence of JavaScript, TypeScript, or any JS/TS framework in a non-qualifying role does NOT make it acceptable.
 
 * **Experience Filter:** Reject if the experience requirement is 4 or more years.
   - **Explicit years stated** (e.g., "3+ years", "minimum 5 years"): reject if the number is 4 or greater.

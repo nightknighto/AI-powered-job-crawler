@@ -25,18 +25,21 @@ interface SiteConfig<T extends BaseJob> {
   name: string;
   crawl: () => Promise<T[]>;
   jobSchema: ZodType<T>;
-  prompts: { jobSummary: string };
 }
 ```
 
-To add a site, implement this interface and register it in `main.ts`.
+Sites only describe **crawling** and the **raw job shape** — to add a site, implement this interface and register it in `main.ts`.
 
-> The **filter prompt** and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`unifiedFilterPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering behaves identically across all sites.
+> The **filter prompt**, the **job-summary prompt**, and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`filterPrompt`, `jobSummaryPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering and summarizing behave identically across all sites.
 
 ### Prompt templates with `{{placeholder}}` substitution
 
-- The **filter prompt** is shared site-wide at `src/pipeline/prompts/filter.md`. At runtime, the `{{jobs}}` placeholder is replaced with the JSON array of crawled jobs.
-- The **job-summary prompt** is per-site at `src/sites/<site>/prompts/job-summary.md`. At runtime, the `{{passingJobs}}` placeholder is replaced with the JSON array of passing evaluated jobs.
+Both prompts are shared site-wide under `src/pipeline/prompts/`:
+
+- **Filter prompt** (`filter.md`) — at runtime, the `{{jobs}}` placeholder is replaced with the JSON array of crawled jobs.
+- **Job-summary prompt** (`job-summary.md`) — at runtime, the `{{passingJobs}}` placeholder is replaced with the JSON array of passing evaluated jobs.
+
+Both are loaded as plain-string constants by `src/pipeline/prompts.ts`.
 
 ### Zod schemas for LLM output validation
 
@@ -88,33 +91,27 @@ To add a new job board site:
    - Max 20 requests total
    - For sites requiring detail page visits (like Indeed), use two-stage crawl
 
-3. **Create prompts** in `src/sites/<site>/prompts/`:
-   - `job-summary.md` — LLM job summary prompt with `{{passingJobs}}` placeholder
-   - Do **not** create a per-site `filter.md` — the filter prompt is shared site-wide at `src/pipeline/prompts/filter.md`
-
-4. **Create SiteConfig** in `src/sites/<site>/index.ts`:
+3. **Create SiteConfig** in `src/sites/<site>/index.ts`:
    ```ts
    export const siteConfig: SiteConfig<SiteJob> = {
      name: "site",
      crawl: crawlSite,
      jobSchema,
-     prompts: {
-       jobSummary: jobSummaryPrompt,
-     },
    };
    ```
+   - Do **not** create any per-site prompt files — both the filter prompt and the job-summary prompt are shared site-wide at `src/pipeline/prompts/`.
 
-5. **Register site** in `src/main.ts`:
+4. **Register site** in `src/main.ts`:
    - Import the site config
    - Add to `sites` object
    - Site is selected via the first positional CLI arg (`pnpm start <site>`)
 
-6. **Update exports** in `src/types/index.ts`:
+5. **Update exports** in `src/types/index.ts`:
    - Export the new site type
 
-7. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`).
+6. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`).
 
-8. **Update documentation**:
+7. **Update documentation**:
    - `README.md` — Add site to quick start and pipeline description
    - `AGENTS.md` — Update file structure and patterns
    - `src/sites/README.md` — Document site-specific implementation
@@ -133,18 +130,20 @@ src/
     WuzzufJob.ts                   — Extends BaseJob with company, location, tags
     IndeedJob.ts                   — Extends BaseJob with company, location
     evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type, shared jobEvaluationSchema (status, reason, experienceLevel?, skills?)
-    site-config.ts                 — SiteConfig<T> interface (prompts: jobSummary only — filter prompt is site-wide)
+    site-config.ts                 — SiteConfig<T> interface (name, crawl, jobSchema only — prompts and schema are shared site-wide)
     GoldenEntry.ts                 — GoldenEntry<T> interface (job, expectedStatus, expectedReasonKeywords) for eval golden dataset
     index.ts                       — Re-exports all types
+    WorkableJob.ts                 — Extends BaseJob (Workable-specific shape; currently no extra fields)
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
     evaluate.ts                    — Production filter stage; thin wrapper around run-filter.ts (strict mode)
     run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenDataset) (used by evaluate.ts, eval.ts, compare-models.ts)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
-    prompts.ts                     — Loads the unified filter prompt from prompts/filter.md and exports unifiedFilterPrompt
+    prompts.ts                     — Loads the shared filter + job-summary prompts from prompts/*.md and exports filterPrompt, jobSummaryPrompt
     prompts/
       filter.md                    — Shared LLM filter prompt with {{jobs}} placeholder (used by all sites)
+      job-summary.md               — Shared LLM job-summary prompt with {{passingJobs}} placeholder (used by all sites)
   reporters/
     types.ts                       — Reporter interface, ReportContext, ReportOutput types
     composite.ts                   — CompositeReporter wraps multiple reporters, shares context
@@ -169,12 +168,14 @@ src/
       evals/wuzzuf-golden-dataset.ts — 40 hand-labeled jobs (13 PASS, 26 FAIL, 1 POTENTIAL_MATCH)
       prompts/filter.old.md        — Historical per-site filter prompt, kept for reference (not loaded at runtime)
       prompts/report.old.md        — Historical per-site report prompt, kept for reference (not loaded at runtime)
-      prompts/job-summary.md       — LLM job summary prompt
     indeed/
       index.ts                     — SiteConfig for Indeed Egypt
       indeed-crawler.ts            — Two-stage crawler (search + detail pages), max 20 requests
       evals/indeed-golden-dataset.ts — 14 hand-labeled jobs (2 PASS, 12 FAIL)
-      prompts/job-summary.md       — LLM job summary prompt
+    workable/
+      index.ts                     — SiteConfig for Workable
+      workable-crawler.ts          — Playwright crawler (JS-heavy SPA), max 20 requests
+      evals/workable-golden-dataset.ts — Hand-labeled jobs for Workable
   helpers/
     extractTextWithLineBreaks.ts   — HTML → text with preserved line breaks
 ```
@@ -259,7 +260,7 @@ Each accomplishment should follow this pattern:
 | **Internship** | Reject Intern/Internship |
 | **Tech Stack** | Accept only JS/TS ecosystem (Node.js, React, Next.js, Vue, Angular, NestJS, Express, etc.) |
 | **Experience** | Reject >3 years |
-| **Role Type** | Dev roles only — reject PM, Designer, QA, Data Analyst, DevOps |
+| **Role Type** | Dev roles only (Frontend/Backend/Fullstack/DevOps). Reject PM, Designer, QA, Data Analyst/Scientist/Engineer, Scrum Master, Support, and **vendor-platform specialists** (ServiceNow, Salesforce, SAP, Workday, Microsoft Power Platform, Dynamics 365, OutSystems, Mendix) — even if the title says "Developer" or "Engineer". DevOps means CI/CD + cloud infra + containers + IaC for in-house software — not third-party SaaS/ITSM/ERP configuration or scripting. |
 | **Location** | Remote → non-Egypt OK; Hybrid → only Egypt; On-site → FAIL |
 
 ## Eval Methodology

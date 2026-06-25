@@ -13,7 +13,7 @@ Crawls job listings from Wuzzuf and Indeed Egypt, filters them through a local L
 
 ```bash
 pnpm install
-pnpm start          # crawl → evaluate → summarize → display (defaults to Wuzzuf)
+pnpm start wuzzuf   # crawl → evaluate → summarize → display (site is required)
 pnpm start indeed   # crawl Indeed Egypt instead
 ```
 
@@ -72,7 +72,7 @@ See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`s
 - **Metrics**: Precision, recall, F1 per class — primary metric is PASS F1 (minority class)
 - **Structural heuristics**: 6 checks catch dropped jobs, invalid statuses, empty reasons, etc.
 - **Threshold**: 80% accuracy target
-- **Shared filter resources**: Evaluation uses the unified filter prompt ([`src/pipeline/prompts.ts`](src/pipeline/prompts.ts) → `src/pipeline/prompts/filter.md`) and the shared `jobEvaluationSchema` ([`src/types/evaluated-job.ts`](src/types/evaluated-job.ts)) — no per-site filter prompt or schema
+- **Shared filter resources**: Evaluation uses the shared filter prompt ([`src/pipeline/prompts.ts`](src/pipeline/prompts.ts) → `src/pipeline/prompts/filter.md`) and the shared `jobEvaluationSchema` ([`src/types/evaluated-job.ts`](src/types/evaluated-job.ts)) — no per-site filter prompt or schema
 
 See [`src/evals/README.md`](src/evals/README.md) for details.
 
@@ -109,7 +109,7 @@ export const shared = {
 
 | Script | Command | Description |
 |--------|---------|-------------|
-| `pnpm start` | `tsx src/main.ts` | Full pipeline: crawl, evaluate, summarize, display |
+| `pnpm start <site>` | `tsx src/main.ts <site>` | Full pipeline: crawl, evaluate, summarize, display (site required) |
 | `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model. Add `--site <name>` to scope to one site |
 | `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1. Add `--site <name>` to scope to one site |
 | `pnpm preview-reporter <names...>` | `tsx src/reporters/preview.ts` | Preview reporters with sample data |
@@ -138,8 +138,7 @@ storage/               — Crawlee internal state (gitignored, auto-generated)
 
 1. Create a new directory under `src/sites/<site-name>/`
 2. Implement a crawler and define a `BaseJob`-extending type
-3. Write a `job-summary.md` prompt template with `{{passingJobs}}` substitution (filter prompt is shared site-wide at `src/pipeline/prompts/filter.md`)
-4. Export a `SiteConfig<T>` object from `index.ts`
-5. Register it in `main.ts`
+3. Export a `SiteConfig<T>` object from `index.ts` (no prompt files needed — both the filter and job-summary prompts are shared site-wide at `src/pipeline/prompts/`)
+4. Register it in `main.ts`
 
 See [`src/sites/README.md`](src/sites/README.md) for a detailed guide.

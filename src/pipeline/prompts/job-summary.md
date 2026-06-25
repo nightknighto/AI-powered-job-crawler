@@ -18,7 +18,7 @@ For each job, output the following as markdown:
 
 * Use **"N/A"** for any data points you cannot extract. Do not hallucinate.
 * Keep descriptions concise and factual — only state what's in the data.
-* For work arrangement, derive it from the `tags` field and `jobDetails`.
+* For work arrangement, derive it from any available signals — `jobDetails` text (look for "Remote", "Hybrid", "On-site", etc.), the `location` field, and any additional fields the job may carry (e.g. `tags`).
 * The fit assessment should consider: JS/TS stack quality, experience level match, remote/hybrid availability.
 
 ## **Jobs to summarize:**

@@ -6,7 +6,7 @@ import { ModelConfig, ModelConfigKey, modelConfigs, shared } from "../config.js"
 import { GoldenComparisonResult, compareGolden } from "../evals/golden.js";
 import { HeuristicResult, runStructuralHeuristics } from "../evals/structural.js";
 import { GoldenEntry } from "../types/GoldenEntry.js";
-import { unifiedFilterPrompt } from "./prompts.js";
+import { filterPrompt } from "./prompts/prompts.js";
 
 /** Type alias for the LLM's filter output after Zod validation. */
 type ParsedLlmEvaluation = z.infer<typeof jobEvaluationSchema>;
@@ -121,13 +121,13 @@ export async function runFilterLLMCall<T extends BaseJob>(
     modelConfig: ModelConfig,
     options: { mode: MergeMode },
 ): Promise<{ aiOutput: EvaluatedJob<T>[]; response: ChatResponse }> {
-    const filterPrompt = unifiedFilterPrompt.replace("{{jobs}}", JSON.stringify(jobs, null, 2));
+    const promptContent = filterPrompt.replace("{{jobs}}", JSON.stringify(jobs, null, 2));
 
     const response = await ollama.chat({
         model: modelConfig.model,
         keep_alive: shared.keepAlive,
         think: modelConfig.think,
-        messages: [{ role: "user", content: filterPrompt }],
+        messages: [{ role: "user", content: promptContent }],
         format: z.toJSONSchema(jobEvaluationSchema),
         options: { temperature: modelConfig.temperature },
     });

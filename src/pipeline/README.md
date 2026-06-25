@@ -35,10 +35,10 @@ Single source of truth for the LLM filter call. Used by `evaluate.ts` (productio
 ### 3. `generate-summary.ts`
 
 ```ts
-generateSummary<T extends BaseJob>(site: SiteConfig<T>, evaluatedJobs: EvaluatedJob<T>[], modelConfig: ModelConfig): Promise<string>
+generateSummary<T extends BaseJob>(evaluatedJobs: EvaluatedJob<T>[], modelConfig: ModelConfig): Promise<string>
 ```
 
-Generates an LLM summary for passing jobs only, using the `jobSummary` prompt template. Returns the raw markdown string (empty string if no passing jobs). Deterministic table generation is handled by reporters via `buildReportTables()`.
+Generates an LLM summary for passing jobs only, using the shared `jobSummaryPrompt` template. Returns the raw markdown string (empty string if no passing jobs). Deterministic table generation is handled by reporters via `buildReportTables()`.
 
 ### 4. `report-helpers.ts`
 
@@ -69,8 +69,8 @@ sequenceDiagram
     main->>evaluate: jobs + SiteConfig + modelConfig
     Note right of evaluate: Delegates to runFilterLLMCall (strict)
     evaluate-->>main: EvaluatedJob<T>[]
-    main->>summarize: evaluatedJobs + SiteConfig + modelConfig
-    Note right of summarize: LLM summary for passing jobs only
+    main->>summarize: evaluatedJobs + modelConfig
+    Note right of summarize: LLM summary for passing jobs only (shared prompt)
     summarize-->>main: string (summary markdown)
     main->>reporters: jobs + summary + ReportContext
     Note right of reporters: Composable: cli-table, html, markdown, etc.

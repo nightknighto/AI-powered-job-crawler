@@ -2,7 +2,7 @@
 
 Evaluation framework for benchmarking LLM filter accuracy against hand-labeled data and structural heuristics.
 
-The eval pipeline is **fully unified across all sites**: it consumes a single combined golden dataset, the shared `unifiedFilterPrompt`, and the shared `jobEvaluationSchema`. There is no per-site filter prompt or evaluation schema.
+The eval pipeline is **fully unified across all sites**: it consumes a single combined golden dataset, the shared `filterPrompt`, and the shared `jobEvaluationSchema`. There is no per-site filter prompt or evaluation schema.
 
 ## Components
 
@@ -78,7 +78,7 @@ The resolved array is passed both to `runFilterEval` and to the report-writer, s
 `runFilterEval` internally:
 
 - Calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` on the jobs from the supplied golden dataset, which:
-  - Builds the filter prompt from the shared [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (`unifiedFilterPrompt` ← `src/pipeline/prompts/filter.md`)
+  - Builds the filter prompt from the shared [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (`filterPrompt` ← `src/pipeline/prompts/filter.md`)
   - Calls Ollama with the shared [`jobEvaluationSchema`](../types/evaluated-job.ts) for structured output
   - Parses and merges results in `'tolerant'` mode (warns on unknown/duplicate/dropped URLs instead of throwing, so noisy LLM output can still be scored)
 - Runs the generic [`compareGolden()`](golden.ts) and [`runStructuralHeuristics()`](structural.ts) and returns `{ aiOutput, comparison, heuristics }`

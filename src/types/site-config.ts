@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { BaseJob } from "./base.js";
-import { JobStatus } from "./evaluated-job.js";
 
 /** Site-specific configuration that plugs into the crawl → evaluate → generateSummary pipeline.
+ *
+ * Sites only describe **crawling** and the **raw job shape** — the filter prompt and the
+ * job-summary prompt are both shared site-wide (see `src/pipeline/prompts.ts`), and the
+ * LLM-output evaluation schema is shared too (see `src/types/evaluated-job.ts`). This keeps
+ * filtering and summarizing behavior identical across all sites.
+ *
  * @template T - The site-specific job type extending {@link BaseJob}.
  */
 export interface SiteConfig<T extends BaseJob = BaseJob> {
@@ -10,12 +15,6 @@ export interface SiteConfig<T extends BaseJob = BaseJob> {
     name: string;
     /** Crawls the site and returns raw job listings. */
     crawl: () => Promise<T[]>;
-    /** Zod schema for a single raw job (used for type inference) */
+    /** Zod schema for a single raw job (used for type inference). */
     jobSchema: z.ZodType<T>;
-    /** Prompt templates with `{{placeholder}}` substitution. */
-    prompts: {
-        /** Prompt for generating detailed job summaries (LLM phase). */
-        jobSummary: string;
-    };
 }
-

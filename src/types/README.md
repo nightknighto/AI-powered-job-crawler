@@ -7,7 +7,8 @@ Runtime-validated type definitions for job listings, evaluation results, site co
 ```
 BaseJob (base.ts)
   ├── WuzzufJob (WuzzufJob.ts)
-  └── IndeedJob (IndeedJob.ts)
+  ├── IndeedJob (IndeedJob.ts)
+  └── WorkableJob (WorkableJob.ts)
 ```
 
 Generic wrappers:
@@ -62,7 +63,6 @@ Generic site configuration. The filter prompt and LLM-output schema are intentio
 | `name` | `string` | Display name |
 | `crawl` | `() => Promise<T[]>` | Crawling function |
 | `jobSchema` | `ZodType<T>` | Zod schema for an individual job structure |
-| `prompts` | `{ jobSummary: string }` | Per-site prompt templates with `{{placeholder}}` substitution |
 
 ### `JobStatus` / `EvaluatedJob<T>` / `jobEvaluationSchema` (`evaluated-job.ts`)
 
