@@ -5,7 +5,7 @@ import { EvaluatedJob, jobEvaluationSchema, JobStatus } from "../types/evaluated
 import { ModelConfig, ModelConfigKey, modelConfigs, shared } from "../config.js";
 import { GoldenComparisonResult, compareGolden } from "../evals/golden.js";
 import { HeuristicResult, runStructuralHeuristics } from "../evals/structural.js";
-import { getCombinedGoldenDataset } from "../evals/combined-golden-dataset.js";
+import { GoldenEntry } from "../types/GoldenEntry.js";
 import { unifiedFilterPrompt } from "./prompts.js";
 
 /** Type alias for the LLM's filter output after Zod validation. */
@@ -140,24 +140,30 @@ export async function runFilterLLMCall<T extends BaseJob>(
     return { aiOutput, response };
 }
 
-/** Run the full filter eval on the combined golden dataset for one model.
+/** Run the full filter eval on a golden dataset for one model.
  *
  * Convenience wrapper used by `src/eval.ts` and `src/compare-models.ts`. Calls
- * {@link runFilterLLMCall} in `'tolerant'` mode on the combined golden dataset, then runs
+ * {@link runFilterLLMCall} in `'tolerant'` mode on the supplied golden dataset, then runs
  * golden comparison and structural heuristics.
  *
+ * The caller controls which dataset is evaluated: pass the combined dataset for a full run
+ * (via `getGoldenDataset()`) or a single site's dataset (via `getGoldenDataset('wuzzuf')`) —
+ * this is how the `--site <name>` CLI flag scopes a run. See
+ * `src/evals/combined-golden-dataset.ts`.
+ *
  * @param modelKey - The configured model key (entry in `modelConfigs`).
+ * @param goldenDataset - The golden dataset to evaluate against (jobs + expected labels).
  * @returns The evaluated jobs, golden comparison result, and heuristic results.
  */
 export async function runFilterEval(
     modelKey: ModelConfigKey,
+    goldenDataset: GoldenEntry[],
 ): Promise<{
     aiOutput: EvaluatedJob<BaseJob>[];
     comparison: GoldenComparisonResult;
     heuristics: HeuristicResult[];
 }> {
     const modelConfig = modelConfigs[modelKey];
-    const goldenDataset = getCombinedGoldenDataset();
     const jobs: BaseJob[] = goldenDataset.map((entry) => entry.job);
 
     console.log(`🤖 Evaluating ${jobs.length} jobs with ${modelConfig.model}...`);

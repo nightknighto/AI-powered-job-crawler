@@ -13,6 +13,8 @@ export interface EvalReportArgs {
     comparison: GoldenComparisonResult;
     heuristics: HeuristicResult[];
     goldenDataset: GoldenEntry[];
+    /** Site scope when the run was filtered via `--site <name>`. Omit for a combined run. */
+    site?: string;
 }
 
 export interface CompareModelDetail {
@@ -32,6 +34,8 @@ export interface CompareModelDetail {
 export interface CompareReportArgs {
     models: CompareModelDetail[];
     goldenDataset: GoldenEntry[];
+    /** Site scope when the run was filtered via `--site <name>`. Omit for a combined run. */
+    site?: string;
 }
 
 function formatTimestamp(): string {
@@ -132,7 +136,8 @@ function renderEvalSection(args: EvalReportArgs): string {
 export function writeEvalReport(args: EvalReportArgs): string {
     const dir = ensureEvalResultsDir();
     const ts = formatTimestamp();
-    const filename = `${ts}_${args.modelKey}.md`;
+    const siteSuffix = args.site ? `_site-${args.site}` : "";
+    const filename = `${ts}_${args.modelKey}${siteSuffix}.md`;
     const filepath = join(dir, filename);
 
     const threshold = 0.8;
@@ -142,6 +147,7 @@ export function writeEvalReport(args: EvalReportArgs): string {
         `# Eval: ${args.modelKey}`,
         "",
         `**Date:** ${formatTimestampReadable()} | **Model:** ${args.modelConfig.model} | **Temperature:** ${args.modelConfig.temperature}`,
+        `**Site:** ${args.site ?? "combined"} (${args.goldenDataset.length} jobs)`,
         "",
         "## Summary",
         "",
@@ -168,7 +174,8 @@ export function writeEvalReport(args: EvalReportArgs): string {
 export function writeCompareReport(args: CompareReportArgs): string {
     const dir = ensureEvalResultsDir();
     const ts = formatTimestamp();
-    const filename = `${ts}_compare.md`;
+    const siteSuffix = args.site ? `_site-${args.site}` : "";
+    const filename = `${ts}_compare${siteSuffix}.md`;
     const filepath = join(dir, filename);
 
     const sorted = [...args.models].sort((a, b) => b.passF1 - a.passF1);
@@ -204,6 +211,7 @@ export function writeCompareReport(args: CompareReportArgs): string {
         `# Model Comparison`,
         "",
         `**Date:** ${formatTimestampReadable()} | **Models:** ${args.models.length} | **Jobs:** ${args.goldenDataset.length}`,
+        `**Site:** ${args.site ?? "combined"}`,
         "",
         "## Rankings (by PASS F1)",
         "",

@@ -4,16 +4,38 @@ import { wuzzufGoldenDataset } from "../sites/wuzzuf/evals/wuzzuf-golden-dataset
 import { GoldenEntry } from "../types/GoldenEntry.js";
 
 /**
- * Combined golden dataset for benchmarking LLM filter accuracy across all job sites.
+ * Registry of every per-site golden dataset, keyed by site name.
  *
- * Aggregates every per-site golden dataset into a single array. New sites that
- * ship their own `evals/<site>-golden-dataset.ts` should be appended here so
- * they are automatically picked up by `eval.ts` and `compare-models.ts`.
+ * This is the single source of truth for which sites contribute to the
+ * combined dataset. New sites that ship their own
+ * `evals/<site>-golden-dataset.ts` should be appended here so they are
+ * automatically picked up by `eval.ts` and `compare-models.ts` (both the
+ * combined run and the per-site `--site <name>` filter).
+ *
+ * Per-site files preserve their concrete job type (e.g.
+ * `GoldenEntry<WuzzufJob>`); the registry widens entries to the base type so
+ * the comparison engine stays generic.
  */
-export function getCombinedGoldenDataset(): GoldenEntry[] {
-    return [
-        ...wuzzufGoldenDataset,
-        ...indeedGoldenDataset,
-        ...workableGoldenDataset,
-    ];
+export const goldenDatasetsBySite = {
+    wuzzuf: wuzzufGoldenDataset,
+    indeed: indeedGoldenDataset,
+    workable: workableGoldenDataset,
+} as const satisfies Record<string, GoldenEntry[]>;
+
+/** Union of all site keys that have a golden dataset (e.g. `'wuzzuf' | 'indeed' | 'workable'`). */
+export type GoldenSiteKey = keyof typeof goldenDatasetsBySite;
+
+/**
+ * Resolve the golden dataset for a benchmark run.
+ *
+ * @param site - When omitted, returns the **combined** dataset across all
+ *   sites (the default behavior of `eval.ts` / `compare-models.ts`). When set
+ *   to a {@link GoldenSiteKey}, returns only that site's golden dataset — used
+ *   by the `--site <name>` CLI flag to scope a run to a single site.
+ * @returns The selected golden dataset entries.
+ */
+export function getGoldenDataset(site?: GoldenSiteKey): GoldenEntry[] {
+    return site
+        ? goldenDatasetsBySite[site]
+        : Object.values(goldenDatasetsBySite).flat();
 }

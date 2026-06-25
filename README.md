@@ -66,8 +66,9 @@ See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`s
 
 - **Unified golden dataset**: 54 hand-labeled jobs across Wuzzuf (40) and Indeed (14) for cross-site compatibility
   - 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH
-  - Aggregated by [`src/evals/combined-golden-dataset.ts`](src/evals/combined-golden-dataset.ts) from per-site files in `src/sites/<site>/evals/`
+  - Aggregated by [`src/evals/combined-golden-dataset.ts`](src/evals/combined-golden-dataset.ts) via the `goldenDatasetsBySite` registry from per-site files in `src/sites/<site>/evals/`
   - Each entry is a `GoldenEntry<T extends BaseJob>` (schema-agnostic, works with all sites)
+  - Scope a run to a single site with `--site <name>` (e.g. `pnpm eval qwenReason --site indeed`)
 - **Metrics**: Precision, recall, F1 per class — primary metric is PASS F1 (minority class)
 - **Structural heuristics**: 6 checks catch dropped jobs, invalid statuses, empty reasons, etc.
 - **Threshold**: 80% accuracy target
@@ -109,8 +110,8 @@ export const shared = {
 | Script | Command | Description |
 |--------|---------|-------------|
 | `pnpm start` | `tsx src/main.ts` | Full pipeline: crawl, evaluate, summarize, display |
-| `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model |
-| `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1 |
+| `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model. Add `--site <name>` to scope to one site |
+| `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1. Add `--site <name>` to scope to one site |
 | `pnpm preview-reporter <names...>` | `tsx src/reporters/preview.ts` | Preview reporters with sample data |
 | `pnpm check` | `tsc --noEmit` | Type-check without emitting |
 

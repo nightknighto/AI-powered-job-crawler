@@ -59,17 +59,25 @@ Writes eval results to the `eval-results/` directory as markdown files:
 
 | Command | Description |
 |---------|-------------|
-| `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset. Pass `--failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
+| `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset (default). Pass `--failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
+| `pnpm eval <model> --site <name>` | Scope the eval to one site's golden dataset (`wuzzuf` \| `indeed` \| `workable`). The report filename and header reflect the selected site. |
 | `pnpm compare` | Run eval for all configured models, print ranked comparison table sorted by PASS F1. |
+| `pnpm compare --site <name>` | Same, scoped to one site's golden dataset. |
 
 ## Implementation Details
 
-The evaluation script ([`src/eval.ts`](../eval.ts)) and benchmark script ([`src/compare-models.ts`](../compare-models.ts)) share the **same filter pipeline** via `runFilterEval(modelKey)` in [`src/pipeline/run-filter.ts`](../pipeline/run-filter.ts). `compare-models.ts` is literally "run `eval` on every configured model and rank the results" — not a parallel implementation.
+The evaluation script ([`src/eval.ts`](../eval.ts)) and benchmark script ([`src/compare-models.ts`](../compare-models.ts)) share the **same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in [`src/pipeline/run-filter.ts`](../pipeline/run-filter.ts). `compare-models.ts` is literally "run `eval` on every configured model and rank the results" — not a parallel implementation.
+
+The caller (not the pipeline) decides which dataset to evaluate. Both scripts resolve it with `getGoldenDataset(site?)`:
+
+- No `--site` flag → the **combined** dataset (default, all sites).
+- `--site <name>` → only that site's golden dataset (`wuzzuf` | `indeed` | `workable`).
+
+The resolved array is passed both to `runFilterEval` and to the report-writer, so the report filename/header reflect the scope (e.g. `2026-06-25_qwenReason_site-indeed.md` with a `Site: indeed` header).
 
 `runFilterEval` internally:
 
-- Loads the **combined golden dataset** from [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts)
-- Calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` which:
+- Calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` on the jobs from the supplied golden dataset, which:
   - Builds the filter prompt from the shared [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (`unifiedFilterPrompt` ← `src/pipeline/prompts/filter.md`)
   - Calls Ollama with the shared [`jobEvaluationSchema`](../types/evaluated-job.ts) for structured output
   - Parses and merges results in `'tolerant'` mode (warns on unknown/duplicate/dropped URLs instead of throwing, so noisy LLM output can still be scored)
@@ -83,12 +91,12 @@ This unified approach means:
 
 - One filter pipeline, three callers (production eval, single-model eval, multi-model benchmark)
 - Zero duplication — any change to the LLM call, prompt, schema, or merge logic lands in exactly one place
-- Easy to add new sites — just drop a new `<site>-golden-dataset.ts` file and append it in `combined-golden-dataset.ts`
+- Easy to add new sites — drop a new `<site>-golden-dataset.ts` file and register it in `goldenDatasetsBySite` (`src/evals/combined-golden-dataset.ts`)
 - Consistent evaluation across all job boards
 
 ## Golden Dataset
 
-Aggregated by [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts) from per-site files:
+Aggregated by [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts). The per-site datasets are registered in the `goldenDatasetsBySite` map; `getGoldenDataset(site?)` returns either the combined dataset (default) or a single site's dataset (for `--site <name>`):
 
 | File | Jobs | Source |
 |------|------|--------|

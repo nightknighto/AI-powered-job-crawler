@@ -112,7 +112,7 @@ To add a new job board site:
 6. **Update exports** in `src/types/index.ts`:
    - Export the new site type
 
-7. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and append it in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up.
+7. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`).
 
 8. **Update documentation**:
    - `README.md` — Add site to quick start and pipeline description
@@ -139,7 +139,7 @@ src/
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
     evaluate.ts                    — Production filter stage; thin wrapper around run-filter.ts (strict mode)
-    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval (used by evaluate.ts, eval.ts, compare-models.ts)
+    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenDataset) (used by evaluate.ts, eval.ts, compare-models.ts)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
     prompts.ts                     — Loads the unified filter prompt from prompts/filter.md and exports unifiedFilterPrompt
@@ -158,7 +158,7 @@ src/
     fixtures/
       sample-evaluated-jobs.ts     — 6 sample EvaluatedJob<WuzzufJob> for testing reporters
   evals/
-    combined-golden-dataset.ts     — Aggregates per-site golden datasets into one array for eval/compare
+    combined-golden-dataset.ts     — goldenDatasetsBySite registry, GoldenSiteKey, getGoldenDataset(site?) for eval/compare (combined by default, single-site via --site)
     golden.ts                      — Golden dataset comparison engine (precision/recall/F1 per class)
     structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)
     report-writer.ts               — Writes eval/compare results to eval-results/ directory
@@ -248,7 +248,7 @@ Each accomplishment should follow this pattern:
 - **`marked.use(markedTerminal())`** needs `@ts-ignore` — types are mismatched but it works at runtime
 - **Golden dataset job matching is by URL** — synthetic/test jobs must use unique fake URLs
 - **Wuzzuf golden jobs are numbered #1–#40 in comments** — keep numbering in sync when adding/removing jobs
-- **Combined dataset is widened to `GoldenEntry<BaseJob>`** — per-site files preserve their concrete type (`GoldenEntry<WuzzufJob>` etc.) but `getCombinedGoldenDataset()` returns the base type
+- **Combined dataset is widened to `GoldenEntry<BaseJob>`** — per-site files preserve their concrete type (`GoldenEntry<WuzzufJob>` etc.) but the `goldenDatasetsBySite` registry widens to the base type so `getGoldenDataset()` returns `GoldenEntry[]`
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl
 
 ## Filter Rules Reference
@@ -269,5 +269,6 @@ Each accomplishment should follow this pattern:
 - Models are configured in `src/config.ts` — the set can change at any time, check the file for current keys
 - `pnpm compare` runs all configured models and ranks by PASS F1
 - `pnpm eval <model>` runs a single model (by its config key) against the golden dataset
-- **Both scripts share the same filter pipeline** via `runFilterEval()` in `src/pipeline/run-filter.ts` — `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
+- **`--site <name>`** scopes either script to one site's golden dataset (`wuzzuf` | `indeed` | `workable`) instead of the combined dataset — e.g. `pnpm eval qwenReason --site indeed`. Valid keys are the entries of `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts`
+- **Both scripts share the same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in `src/pipeline/run-filter.ts` — the caller resolves the dataset via `getGoldenDataset(site?)` and passes it in; `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
 - **Strict vs tolerant**: the production pipeline (`evaluate.ts`) calls `runFilterLLMCall(..., { mode: 'strict' })` which throws on unknown/duplicate/dropped URLs; eval scripts use `'tolerant'` mode (warn and continue) so noisy LLM output can still be scored

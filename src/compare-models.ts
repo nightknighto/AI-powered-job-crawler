@@ -2,8 +2,9 @@ import { modelConfigs, ModelConfigKey } from "./config.js";
 import { GoldenComparisonResult } from "./evals/golden.js";
 import { HeuristicResult } from "./evals/structural.js";
 import { writeCompareReport, CompareModelDetail } from "./evals/report-writer.js";
-import { getCombinedGoldenDataset } from "./evals/combined-golden-dataset.js";
+import { getGoldenDataset, goldenDatasetsBySite, GoldenSiteKey } from "./evals/combined-golden-dataset.js";
 import { runFilterEval } from "./pipeline/run-filter.js";
+import { GoldenEntry } from "./types/GoldenEntry.js";
 
 interface ModelResult {
     modelKey: string;
@@ -20,9 +21,9 @@ interface ModelResult {
     aiOutputJobTitles: string[];
 }
 
-async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
+async function evalModel(modelKey: ModelConfigKey, goldenDataset: GoldenEntry[]): Promise<ModelResult> {
     const config = modelConfigs[modelKey];
-    const { comparison, heuristics, aiOutput } = await runFilterEval(modelKey);
+    const { comparison, heuristics, aiOutput } = await runFilterEval(modelKey, goldenDataset);
 
     const errors: string[] = comparison.perJob
         .filter((job) => !job.statusMatch)
@@ -90,14 +91,31 @@ async function main() {
     const models = Object.keys(modelConfigs) as ModelConfigKey[];
     const results: ModelResult[] = [];
 
-    const goldenDataset = getCombinedGoldenDataset();
-    console.log(`🔄 Running eval for ${models.length} models on ${goldenDataset.length} jobs...\n`);
+    const availableSites = Object.keys(goldenDatasetsBySite).join(", ");
+
+    const siteFlagIdx = process.argv.indexOf("--site");
+    let siteKey: GoldenSiteKey | undefined;
+    if (siteFlagIdx !== -1) {
+        const siteValue = process.argv[siteFlagIdx + 1];
+        if (!siteValue) {
+            console.error(`--site requires a value. Available sites: ${availableSites}`);
+            process.exit(1);
+        }
+        if (!(siteValue in goldenDatasetsBySite)) {
+            console.error(`Unknown site: ${siteValue}. Available sites: ${availableSites}`);
+            process.exit(1);
+        }
+        siteKey = siteValue as GoldenSiteKey;
+    }
+
+    const goldenDataset = getGoldenDataset(siteKey);
+    console.log(`🔄 Running eval for ${models.length} models on ${siteKey ?? "combined"} (${goldenDataset.length} jobs)...\n`);
 
     for (const modelKey of models) {
         const config = modelConfigs[modelKey];
         console.log(`\n▶ Running ${modelKey} (${config.model})...`);
         try {
-            const result = await evalModel(modelKey);
+            const result = await evalModel(modelKey, goldenDataset);
             results.push(result);
             console.log(`  → Accuracy: ${(result.accuracy * 100).toFixed(1)}% | PASS F1: ${(result.passF1 * 100).toFixed(1)}% | ${result.correct}/${result.total} correct`);
         } catch (err) {
@@ -120,7 +138,7 @@ async function main() {
         heuristics: r.heuristics,
         aiOutputJobs: r.aiOutputJobTitles,
     }));
-    const reportPath = writeCompareReport({ models: details, goldenDataset });
+    const reportPath = writeCompareReport({ models: details, goldenDataset, site: siteKey });
     console.log(`\n📄 Report saved: ${reportPath}`);
 }
 

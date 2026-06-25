@@ -30,7 +30,7 @@ Single source of truth for the LLM filter call. Used by `evaluate.ts` (productio
 | `logTimingAndTokens(response)` | Unified compact timing + token-usage log line |
 | `mergeJobsByUrl(jobs, parsed, mode)` | Re-attach original jobs to LLM output via URL. `mode: 'strict'` throws on bad URLs; `'tolerant'` warns and continues |
 | `runFilterLLMCall(jobs, modelConfig, { mode })` | Build prompt, call Ollama (with `keep_alive`), log timing, parse, merge. Returns `{ aiOutput, response }` |
-| `runFilterEval(modelKey)` | High-level: runs `runFilterLLMCall` on the combined golden dataset in tolerant mode, then adds `compareGolden()` + heuristics. Returns `{ aiOutput, comparison, heuristics }`. Used by `eval.ts` and `compare-models.ts` |
+| `runFilterEval(modelKey, goldenDataset)` | High-level: runs `runFilterLLMCall` on the supplied golden dataset in tolerant mode, then adds `compareGolden()` + heuristics. Returns `{ aiOutput, comparison, heuristics }`. The caller picks the dataset — combined via `getGoldenDataset()` or a single site via `getGoldenDataset('wuzzuf')` (the `--site` flag). Used by `eval.ts` and `compare-models.ts` |
 
 ### 3. `generate-summary.ts`
 

@@ -51,7 +51,7 @@ interface SiteConfig<T extends BaseJob> {
 2. Create `<site-name>-crawler.ts` with a crawl function using CheerioCrawler
 3. Create `index.ts` exporting a `SiteConfig<YourJobType>` (define `YourJobType` in `src/types/`)
 4. Create `prompts/job-summary.md` (the filter prompt is shared site-wide — do **not** create a per-site `filter.md`)
-5. *(Optional but recommended)* Create `evals/<site-name>-golden-dataset.ts` with hand-labeled test jobs, then append it in `src/evals/combined-golden-dataset.ts` so `pnpm eval` and `pnpm compare` pick it up
+5. *(Optional but recommended)* Create `evals/<site-name>-golden-dataset.ts` with hand-labeled test jobs, then register it in `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts` so `pnpm eval` and `pnpm compare` pick it up (both the combined run and the `--site <name>` filter)
 6. Import and register the new site config in `main.ts`
 
 ## Prompt Convention
