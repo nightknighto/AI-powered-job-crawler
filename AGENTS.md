@@ -138,7 +138,8 @@ src/
     index.ts                       — Re-exports all types
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
-    evaluate.ts                    — LLM evaluation with Zod validation + structural heuristics (uses unifiedFilterPrompt + jobEvaluationSchema)
+    evaluate.ts                    — Production filter stage; thin wrapper around run-filter.ts (strict mode)
+    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval (used by evaluate.ts, eval.ts, compare-models.ts)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
     prompts.ts                     — Loads the unified filter prompt from prompts/filter.md and exports unifiedFilterPrompt
@@ -268,3 +269,5 @@ Each accomplishment should follow this pattern:
 - Models are configured in `src/config.ts` — the set can change at any time, check the file for current keys
 - `pnpm compare` runs all configured models and ranks by PASS F1
 - `pnpm eval <model>` runs a single model (by its config key) against the golden dataset
+- **Both scripts share the same filter pipeline** via `runFilterEval()` in `src/pipeline/run-filter.ts` — `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
+- **Strict vs tolerant**: the production pipeline (`evaluate.ts`) calls `runFilterLLMCall(..., { mode: 'strict' })` which throws on unknown/duplicate/dropped URLs; eval scripts use `'tolerant'` mode (warn and continue) so noisy LLM output can still be scored

@@ -1,13 +1,9 @@
-import ollama from "ollama";
-import { z } from "zod";
-import { modelConfigs, ModelConfigKey, shared } from "./config.js";
-import { compareGolden, GoldenComparisonResult } from "./evals/golden.js";
-import { runStructuralHeuristics, HeuristicResult } from "./evals/structural.js";
+import { modelConfigs, ModelConfigKey } from "./config.js";
+import { GoldenComparisonResult } from "./evals/golden.js";
+import { HeuristicResult } from "./evals/structural.js";
 import { writeCompareReport, CompareModelDetail } from "./evals/report-writer.js";
-import { EvaluatedJob, jobEvaluationSchema, JobStatus } from "./types/evaluated-job.js";
 import { getCombinedGoldenDataset } from "./evals/combined-golden-dataset.js";
-import { BaseJob } from "./types/base.js";
-import { unifiedFilterPrompt } from "./pipeline/prompts.js";
+import { runFilterEval } from "./pipeline/run-filter.js";
 
 interface ModelResult {
     modelKey: string;
@@ -26,88 +22,14 @@ interface ModelResult {
 
 async function evalModel(modelKey: ModelConfigKey): Promise<ModelResult> {
     const config = modelConfigs[modelKey];
-    const jobs = getCombinedGoldenDataset().map((entry) => entry.job);
+    const { comparison, heuristics, aiOutput } = await runFilterEval(modelKey);
 
-    const filterPrompt = unifiedFilterPrompt.replace(
-        "{{jobs}}",
-        JSON.stringify(jobs, null, 2),
-    );
-
-    const response = await ollama.chat({
-        model: config.model,
-        think: config.think,
-        messages: [{ role: "user", content: filterPrompt }],
-        format: z.toJSONSchema(jobEvaluationSchema),
-        options: { temperature: config.temperature },
-    });
-
-    // Log timing and token usage
-    console.log(`⏱️  Load: ${(response.load_duration / 1_000_000_000).toFixed(1)}s | Prompt Eval: ${(response.prompt_eval_duration / 1_000_000_000).toFixed(1)}s |
-    Eval: ${(response.eval_duration / 1_000_000_000).toFixed(1)}s | Total: ${(response.total_duration / 1_000_000_000).toFixed(1)}s`);
-    console.log(`📝  Input Tokens: ${response.prompt_eval_count} | Output Tokens: ${response.eval_count}`);
-
-    let parsed: ReturnType<typeof jobEvaluationSchema.parse>;
-    try {
-        parsed = jobEvaluationSchema.parse(JSON.parse(response.message.content.replaceAll('```', '')));
-    } catch (err) {
-        console.warn("⚠️  Failed to parse LLM output:");
-        console.warn(err);
-        console.warn("Raw LLM response:");
-        console.warn(response.message.content);
-        process.exit(1);
-    }
-
-    const jobByUrl = new Map<string, BaseJob>();
-    for (const job of jobs) {
-        jobByUrl.set(job.jobURL, job);
-    }
-
-    const inputUrls = new Set(jobs.map((j) => j.jobURL));
-    const outputUrls = new Set<string>();
-    const aiOutput: EvaluatedJob<BaseJob>[] = [];
-
-    for (const item of parsed) {
-        const { jobURL, status, reason, experienceLevel, skills } = item
-
-        if (!inputUrls.has(jobURL)) {
-            console.warn(`⚠️  LLM returned unknown jobURL not in input, skipping: ${jobURL}`);
-            continue;
-        }
-        if (outputUrls.has(jobURL)) {
-            console.warn(`⚠️  LLM returned duplicate jobURL, skipping: ${jobURL}`);
-            continue;
-        }
-
-        const job = jobByUrl.get(jobURL);
-        if (!job) {
-            console.warn(`⚠️  jobURL lookup failed (should not happen), skipping: ${jobURL}`);
-            continue;
-        }
-
-        outputUrls.add(jobURL);
-        aiOutput.push({ job, status, reason, experienceLevel, skills });
-    }
-
-    if (outputUrls.size !== inputUrls.size) {
-        const missing = [...inputUrls].filter((url) => !outputUrls.has(url));
-        console.warn(
-            `⚠️  LLM dropped ${missing.length} job(s) from output: ${missing.join(", ")}`,
-        );
-    }
-
-    const goldenDataset = getCombinedGoldenDataset();
-
-    const comparison = compareGolden(goldenDataset, aiOutput);
-
-    const heuristics = runStructuralHeuristics(jobs, aiOutput);
-
-    const errors: string[] = [];
-    for (const job of comparison.perJob) {
-        if (!job.statusMatch) {
+    const errors: string[] = comparison.perJob
+        .filter((job) => !job.statusMatch)
+        .map((job) => {
             const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;
-            errors.push(`  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`);
-        }
-    }
+            return `  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`;
+        });
 
     return {
         modelKey,
@@ -185,7 +107,6 @@ async function main() {
 
     printComparison(results);
 
-    // Write report to eval-results/
     const details: CompareModelDetail[] = results.map((r) => ({
         modelKey: r.modelKey,
         modelName: r.modelName,

@@ -23,7 +23,7 @@ if (!site) {
 
 console.log(`Using site: ${site.name}`);
 
-const model = modelConfigs.qwenReason0;
+const model = modelConfigs.qwenReason;
 
 const jobs = await crawl(site);
 const evaluated = await evaluate(site, jobs, model);

@@ -18,7 +18,19 @@ Generic crawl orchestration using Crawlee CheerioCrawler. Delegates to the site'
 evaluate<T extends BaseJob>(site: SiteConfig<T>, jobs: T[], modelConfig: ModelConfig): Promise<EvaluatedJob<T>[]>
 ```
 
-Sends jobs to Ollama LLM with the **shared** filter prompt, parses structured JSON response using Zod validation. Each job gets a status (`PASS`/`FAIL`/`POTENTIAL_MATCH`) and an array of reason strings. Uses the unified `unifiedFilterPrompt` (from `src/pipeline/prompts.ts`) and the shared `jobEvaluationSchema` (from `src/types/evaluated-job.ts`) — these are intentionally not part of `SiteConfig` so filtering behaves identically across all sites.
+Thin production wrapper around `runFilterLLMCall(jobs, modelConfig, { mode: "strict" })` (see `run-filter.ts` below). Adds structural-heuristics logging. Strict mode means any LLM misbehavior (unknown/duplicate/dropped URLs) throws immediately.
+
+### 2a. `run-filter.ts` (shared filter pipeline)
+
+Single source of truth for the LLM filter call. Used by `evaluate.ts` (production), `eval.ts`, and `compare-models.ts`. Exports:
+
+| Export | Purpose |
+|--------|---------|
+| `parseLlmOutput(content)` | Strip ` ``` ` fences, JSON-parse, Zod-validate against `jobEvaluationSchema` |
+| `logTimingAndTokens(response)` | Unified compact timing + token-usage log line |
+| `mergeJobsByUrl(jobs, parsed, mode)` | Re-attach original jobs to LLM output via URL. `mode: 'strict'` throws on bad URLs; `'tolerant'` warns and continues |
+| `runFilterLLMCall(jobs, modelConfig, { mode })` | Build prompt, call Ollama (with `keep_alive`), log timing, parse, merge. Returns `{ aiOutput, response }` |
+| `runFilterEval(modelKey)` | High-level: runs `runFilterLLMCall` on the combined golden dataset in tolerant mode, then adds `compareGolden()` + heuristics. Returns `{ aiOutput, comparison, heuristics }`. Used by `eval.ts` and `compare-models.ts` |
 
 ### 3. `generate-summary.ts`
 
@@ -54,8 +66,8 @@ sequenceDiagram
 
     main->>crawl: SiteConfig<T>
     crawl-->>main: T[] (raw jobs)
-    main->>evaluate: jobs + SiteConfig + modelKey
-    Note right of evaluate: Ollama LLM + Zod validation
+    main->>evaluate: jobs + SiteConfig + modelConfig
+    Note right of evaluate: Delegates to runFilterLLMCall (strict)
     evaluate-->>main: EvaluatedJob<T>[]
     main->>summarize: evaluatedJobs + SiteConfig + modelConfig
     Note right of summarize: LLM summary for passing jobs only

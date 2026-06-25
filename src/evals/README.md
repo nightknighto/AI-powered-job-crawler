@@ -64,17 +64,25 @@ Writes eval results to the `eval-results/` directory as markdown files:
 
 ## Implementation Details
 
-The evaluation script ([`src/eval.ts`](../eval.ts)) and benchmark script ([`src/compare-models.ts`](../compare-models.ts)) both use:
+The evaluation script ([`src/eval.ts`](../eval.ts)) and benchmark script ([`src/compare-models.ts`](../compare-models.ts)) share the **same filter pipeline** via `runFilterEval(modelKey)` in [`src/pipeline/run-filter.ts`](../pipeline/run-filter.ts). `compare-models.ts` is literally "run `eval` on every configured model and rank the results" — not a parallel implementation.
 
-- The **combined golden dataset** from [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts), which aggregates every per-site file under `src/sites/<site>/evals/`
-- The **shared filter prompt** `unifiedFilterPrompt` from [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (loaded from `src/pipeline/prompts/filter.md`)
-- The **shared evaluation schema** `jobEvaluationSchema` from [`src/types/evaluated-job.ts`](../types/evaluated-job.ts)
-- The generic comparison logic in [`src/evals/golden.ts`](golden.ts) that works with `BaseJob`-typed jobs
+`runFilterEval` internally:
+
+- Loads the **combined golden dataset** from [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts)
+- Calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` which:
+  - Builds the filter prompt from the shared [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (`unifiedFilterPrompt` ← `src/pipeline/prompts/filter.md`)
+  - Calls Ollama with the shared [`jobEvaluationSchema`](../types/evaluated-job.ts) for structured output
+  - Parses and merges results in `'tolerant'` mode (warns on unknown/duplicate/dropped URLs instead of throwing, so noisy LLM output can still be scored)
+- Runs the generic [`compareGolden()`](golden.ts) and [`runStructuralHeuristics()`](structural.ts) and returns `{ aiOutput, comparison, heuristics }`
+
+Each caller then handles its own UX: `eval.ts` prints verbose per-job results and exits 1 below 80% accuracy; `compare-models.ts` prints a rankings table sorted by PASS F1 and writes a comparison report.
+
+The production pipeline ([`src/pipeline/evaluate.ts`](../pipeline/evaluate.ts)) uses the **same** `runFilterLLMCall` but in `'strict'` mode (throws on bad URLs) — see [`src/pipeline/README.md`](../pipeline/README.md).
 
 This unified approach means:
 
-- No site-specific code in the evaluation system
-- A single combined dataset for all sites (no duplication)
+- One filter pipeline, three callers (production eval, single-model eval, multi-model benchmark)
+- Zero duplication — any change to the LLM call, prompt, schema, or merge logic lands in exactly one place
 - Easy to add new sites — just drop a new `<site>-golden-dataset.ts` file and append it in `combined-golden-dataset.ts`
 - Consistent evaluation across all job boards
 
