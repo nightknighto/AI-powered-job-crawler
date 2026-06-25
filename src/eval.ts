@@ -6,13 +6,13 @@ import { writeEvalReport } from "./evals/report-writer.js";
 import { runFilterEval } from "./pipeline/run-filter.js";
 
 const modelArg = process.argv[2] as ModelConfigKey | undefined;
-const failedOnlyArg = process.argv.includes("--failed-only");
+const printFailedOnlyArg = process.argv.includes("--print-failed-only");
 
 const availableSites = Object.keys(goldenDatasetsBySite).join(", ");
 
 if (!modelArg || !(modelArg in modelConfigs)) {
     const availableModels = Object.keys(modelConfigs).join(", ");
-    console.error(`Usage: pnpm eval <model> [--site <site>] [--failed-only]\nAvailable models: ${availableModels}\nAvailable sites:  ${availableSites}`);
+    console.error(`Usage: pnpm eval <model> [--site <site>] [--print-failed-only]\nAvailable models: ${availableModels}\nAvailable sites:  ${availableSites}`);
     process.exit(1);
 }
 
@@ -46,7 +46,7 @@ async function main() {
     console.log("\n── Structural Heuristics ──\n");
     logHeuristicResults(heuristics);
 
-    printGoldenResults(comparison, failedOnlyArg);
+    printGoldenResults(comparison, printFailedOnlyArg);
 
     const reportPath = writeEvalReport({
         modelKey: validModelKey,

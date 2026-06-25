@@ -6,6 +6,7 @@ import { generateSummary } from "./pipeline/generate-summary.js";
 import { createReporters } from "./reporters/index.js";
 import { modelConfigs, shared } from "./config.js";
 import { workableConfig } from "./sites/workable/index.js";
+import { joobleConfig } from "./sites/jooble/index.js";
 
 // Get site from CLI args (required)
 const siteName = process.argv[2];
@@ -14,6 +15,7 @@ const sites = {
     wuzzuf: wuzzufConfig,
     indeed: indeedConfig,
     workable: workableConfig,
+    jooble: joobleConfig,
 } as const;
 
 if (!siteName) {

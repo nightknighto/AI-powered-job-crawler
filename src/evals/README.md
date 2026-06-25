@@ -59,7 +59,7 @@ Writes eval results to the `eval-results/` directory as markdown files:
 
 | Command | Description |
 |---------|-------------|
-| `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset (default). Pass `--failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
+| `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset (default). Pass `--print-failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
 | `pnpm eval <model> --site <name>` | Scope the eval to one site's golden dataset (`wuzzuf` \| `indeed` \| `workable`). The report filename and header reflect the selected site. |
 | `pnpm compare` | Run eval for all configured models, print ranked comparison table sorted by PASS F1. |
 | `pnpm compare --site <name>` | Same, scoped to one site's golden dataset. |

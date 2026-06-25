@@ -1,4 +1,5 @@
 import { indeedGoldenDataset } from "../sites/indeed/evals/indeed-golden-dataset.js";
+import { joobleGoldenDataset } from "../sites/jooble/evals/jooble-golden-dataset.js";
 import { workableGoldenDataset } from "../sites/workable/evals/workable-golden-dataset.js";
 import { wuzzufGoldenDataset } from "../sites/wuzzuf/evals/wuzzuf-golden-dataset.js";
 import { GoldenEntry } from "../types/GoldenEntry.js";
@@ -20,9 +21,10 @@ export const goldenDatasetsBySite = {
     wuzzuf: wuzzufGoldenDataset,
     indeed: indeedGoldenDataset,
     workable: workableGoldenDataset,
+    jooble: joobleGoldenDataset,
 } as const satisfies Record<string, GoldenEntry[]>;
 
-/** Union of all site keys that have a golden dataset (e.g. `'wuzzuf' | 'indeed' | 'workable'`). */
+/** Union of all site keys that have a golden dataset (e.g. `'wuzzuf' | 'indeed' | 'workable' | 'jooble'`). */
 export type GoldenSiteKey = keyof typeof goldenDatasetsBySite;
 
 /**

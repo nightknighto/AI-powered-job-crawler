@@ -137,9 +137,9 @@ export function compareGolden<T extends BaseJob>(
 /**
  * Pretty-print the golden comparison results.
  * @param result - The comparison result to print.
- * @param failedOnly - When true, only prints jobs that mismatched or were dropped.
+ * @param printFailedOnly - When true, only prints jobs that mismatched or were dropped.
  */
-export function printGoldenResults(result: GoldenComparisonResult, failedOnly: boolean = false): void {
+export function printGoldenResults(result: GoldenComparisonResult, printFailedOnly: boolean = false): void {
     console.log("\n═══════════════════════════════════════════════════");
     console.log("  GOLDEN DATASET EVALUATION RESULTS");
     console.log("═══════════════════════════════════════════════════\n");
@@ -147,7 +147,7 @@ export function printGoldenResults(result: GoldenComparisonResult, failedOnly: b
     // Per-job results
     console.log("── Per-Job Results ──\n");
     for (const job of result.perJob) {
-        if (failedOnly && job.statusMatch && !job.dropped) {
+        if (printFailedOnly && job.statusMatch && !job.dropped) {
             continue;
         }
         const statusIcon = job.statusMatch ? "✅" : "❌";
