@@ -5,6 +5,7 @@ import { evaluate } from "./pipeline/evaluate.js";
 import { generateSummary } from "./pipeline/generate-summary.js";
 import { createReporters } from "./reporters/index.js";
 import { modelConfigs, shared } from "./config.js";
+import { workableConfig } from "./sites/workable/index.js";
 
 // Get site from CLI args (default: wuzzuf)
 const siteName = process.argv[2] || 'wuzzuf';
@@ -12,6 +13,7 @@ const siteName = process.argv[2] || 'wuzzuf';
 const sites = {
     wuzzuf: wuzzufConfig,
     indeed: indeedConfig,
+    workable: workableConfig,
 } as const;
 
 const site = sites[siteName as keyof typeof sites];

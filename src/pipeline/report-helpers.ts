@@ -25,6 +25,9 @@ export function parseRelativeDate(dateStr: string): number {
     // "posted just now" or similar
     if (str.includes("just now") || str.includes("moment ago")) return 0;
 
+    // "posted today"
+    if (str.includes("today")) return 0;
+
     return Infinity;
 }
 
