@@ -22,11 +22,18 @@ export function parseRelativeDate(dateStr: string): number {
     const minuteMatch = str.match(/(\d+)\s*minutes?\s*ago/);
     if (minuteMatch) return Number(minuteMatch[1]) / 1440;
 
+    // "posted today" => estimate to 8 hours ago
+    if (str.includes("today")) return 8 / 24;
+
+    // "few hours ago" => estimate to 3 hours ago
+    if (str.includes("few hours ago")) return 3 / 24;
+
+    // "a few minutes ago" => estimate to 5 minutes ago
+    if (str.includes("few minutes ago")) return 5 / 1440;
+
     // "posted just now" or similar
     if (str.includes("just now") || str.includes("moment ago")) return 0;
 
-    // "posted today"
-    if (str.includes("today")) return 0;
 
     return Infinity;
 }

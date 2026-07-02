@@ -3,7 +3,7 @@ import { join } from "path";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ReportContext, Reporter } from "./types.js";
-import { buildReportTables } from "../pipeline/report-helpers.js";
+import { buildReportTables } from "./report-helpers.js";
 
 /** Writes the full markdown report to a timestamped `.md` file.
  * Uses the same deterministic tables + LLM summary as cli-table renders.

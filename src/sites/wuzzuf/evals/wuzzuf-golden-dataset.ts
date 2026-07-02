@@ -167,6 +167,24 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
         expectedStatus: "PASS",
         expectedReasonKeywords: ["React", "TypeScript"],
     },
+
+
+    {
+        job: {
+            "jobTitle": "Full Stack Software Developer",
+            "jobURL": "https://wuzzuf.net/jobs/p/svn4rafjlfy5-full-stack-software-developer-stradigimc-cairo-egypt",
+            "company": "Stradigimc",
+            "location": "Cairo, Egypt",
+            "date": "posted 1 day ago",
+            "jobDetails": [
+                "Job Description\nStradigi Management Consultancies is looking for a talented Full Stack Software Developer to join our growing Digital Projects team.\nYou will be responsible for designing, developing, and maintaining enterprise web applications that support digital transformation initiatives across construction, engineering, and business consulting projects.\nYou will work closely with project managers, consultants, and cross-functional teams to build scalable, secure, and high-performance solutions using modern front-end and back-end technologies.\nKey Responsibilities\nDesign, develop, and maintain scalable web applications.\nBuild responsive front-end interfaces using React.js.\nDevelop robust back-end services using ASP.NET Core and Node.js.\nDesign and consume RESTful APIs.\nDevelop and optimize SQL databases.\nIntegrate third-party platforms and enterprise systems.\nTroubleshoot, debug, and optimize application performance.\nParticipate in code reviews and software architecture discussions.\nCollaborate with project teams throughout the software development lifecycle.\nEnsure software quality, security, and maintainability.\nSupport deployment and production environments.\nPrepare technical documentation and development reports.",
+		        "Job Requirements\nQualifications & Requirements\nBachelor's degree in Computer Science, Software Engineering, Information Technology, or related field.\n3–6 years of experience in Full Stack Development.\nStrong experience with React.js.\nStrong experience with ASP.NET Core.\nExperience with Node.js.\nStrong knowledge of HTML5, CSS3, JavaScript, and TypeScript.\nExperience with SQL Server and database design.\nExperience developing REST APIs.\nExperience with Git.\nKnowledge of Azure is a plus.\nExcellent analytical and problem-solving skills.\nStrong communication skills.\nPreferred Background\nDigital Transformation companies\nTechnology Consulting firms\nSoftware Houses\nMicrosoft Partner companies\nEngineering Technology companies\nConstruction Technology (ConTech) companies\nWhat We Offer\nRegional and international digital transformation projects.\nProfessional growth and continuous learning.\nExposure to enterprise technologies.\nCollaborative and innovative work environment.\nCareer advancement opportunities."
+            ],
+            "tags": "Full Time, Remote"
+        },
+        expectedStatus: "FAIL",
+        expectedReasonKeywords: ["ASP.NET"],
+    }
 ];
 
 // ─────────────────────────────────────────────────────────
@@ -745,6 +763,24 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
         expectedStatus: "PASS",
         expectedReasonKeywords: ["JavaScript", "Node.js"],
     },
+
+    // #41 — Full Stack Software Developer (Cairo, Egypt, Remote) → PASS: React/Node.js stack, Egypt+Remote, 3-6yr exp
+    {
+        job: {
+            "jobTitle": "Full Stack Software Developer",
+            "jobURL": "https://wuzzuf.net/jobs/p/dawdawfawf-full-stack-software-developer-stradigimc-cairo-egypt",
+            "company": "Stradigimc",
+            "location": "Cairo, Egypt",
+            "date": "posted 1 day ago",
+            "jobDetails": [
+                "Job Description\nStradigi Management Consultancies is looking for a talented Full Stack Software Developer to join our growing Digital Projects team.\nYou will be responsible for designing, developing, and maintaining enterprise web applications that support digital transformation initiatives across construction, engineering, and business consulting projects.\nYou will work closely with project managers, consultants, and cross-functional teams to build scalable, secure, and high-performance solutions using modern front-end and back-end technologies.\nKey Responsibilities\nDesign, develop, and maintain scalable web applications.\nBuild responsive front-end interfaces using React.js.\nDevelop robust back-end services using Node.js.\nDesign and consume RESTful APIs.\nDevelop and optimize SQL databases.\nIntegrate third-party platforms and enterprise systems.\nTroubleshoot, debug, and optimize application performance.\nParticipate in code reviews and software architecture discussions.\nCollaborate with project teams throughout the software development lifecycle.\nEnsure software quality, security, and maintainability.\nSupport deployment and production environments.\nPrepare technical documentation and development reports.",
+                "Job Requirements\nQualifications & Requirements\nBachelor's degree in Computer Science, Software Engineering, Information Technology, or related field.\n3–6 years of experience in Full Stack Development.\nStrong experience with React.js.\nStrong experience with Node.js.\nStrong knowledge of HTML5, CSS3, JavaScript, and TypeScript.\nExperience with SQL Server and database design.\nExperience developing REST APIs.\nExperience with Git.\nKnowledge of Azure is a plus.\nExcellent analytical and problem-solving skills.\nStrong communication skills.\nPreferred Background\nDigital Transformation companies\nTechnology Consulting firms\nSoftware Houses\nMicrosoft Partner companies\nEngineering Technology companies\nConstruction Technology (ConTech) companies\nWhat We Offer\nRegional and international digital transformation projects.\nProfessional growth and continuous learning.\nExposure to enterprise technologies.\nCollaborative and innovative work environment.\nCareer advancement opportunities."
+            ],
+            "tags": "Full Time, Remote"
+        },
+        expectedStatus: "PASS",
+        expectedReasonKeywords: ["React", "Node.js"],
+    }
 ];
 
 /** Hand-labeled dataset of 40 jobs (9 real + 31 synthetic) for benchmarking LLM filter accuracy. */

@@ -2,7 +2,7 @@ import ollama from "ollama";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ModelConfig, shared } from "../config.js";
-import { splitByStatus } from "./report-helpers.js";
+import { splitByStatus } from "../reporters/report-helpers.js";
 import { jobSummaryPrompt } from "./prompts/prompts.js";
 
 /** Generates an LLM summary for passing jobs using the shared `jobSummaryPrompt`.

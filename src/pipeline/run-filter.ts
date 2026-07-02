@@ -20,8 +20,14 @@ type MergeMode = "strict" | "tolerant";
  * @throws If the content is not valid JSON or fails schema validation.
  */
 function parseLlmOutput(content: string): ParsedLlmEvaluation {
-    const cleaned = content.replaceAll("```", "");
-    return jobEvaluationSchema.parse(JSON.parse(cleaned));
+    try {
+        const cleaned = content.replaceAll("```", "");
+        return jobEvaluationSchema.parse(JSON.parse(cleaned));
+    } catch (error) {
+        console.error("Failed to parse LLM output:", error);
+        console.error("Raw LLM output:\n\n", content);
+        throw error;
+    }
 }
 
 /** Log timing and token-usage stats as a single compact line.
@@ -119,9 +125,9 @@ function mergeJobsByUrl<T extends BaseJob>(
 export async function runFilterLLMCall<T extends BaseJob>(
     jobs: T[],
     modelConfig: ModelConfig,
-    options: { mode: MergeMode },
+    options: { mode: MergeMode; prompt?: string },
 ): Promise<{ aiOutput: EvaluatedJob<T>[]; response: ChatResponse }> {
-    const promptContent = filterPrompt.replace("{{jobs}}", JSON.stringify(jobs, null, 2));
+    const promptContent = (options.prompt ?? filterPrompt).replace("{{jobs}}", JSON.stringify(jobs, null, 2));
 
     const response = await ollama.chat({
         model: modelConfig.model,
@@ -138,6 +144,20 @@ export async function runFilterLLMCall<T extends BaseJob>(
     const aiOutput = mergeJobsByUrl(jobs, parsed, options.mode);
 
     return { aiOutput, response };
+}
+
+/** Timing and token metrics extracted from an Ollama {@link ChatResponse}. */
+export interface ModelCallMetrics {
+    /** Total request duration in milliseconds. */
+    totalDurationMs: number;
+    /** Prompt evaluation duration in milliseconds. */
+    promptEvalDurationMs: number;
+    /** Token-generation duration in milliseconds. */
+    evalDurationMs: number;
+    /** Number of input (prompt) tokens consumed. */
+    inputTokens: number;
+    /** Number of output (generated) tokens produced. */
+    outputTokens: number;
 }
 
 /** Run the full filter eval on a golden dataset for one model.
@@ -158,19 +178,29 @@ export async function runFilterLLMCall<T extends BaseJob>(
 export async function runFilterEval(
     modelKey: ModelConfigKey,
     goldenDataset: GoldenEntry[],
+    prompt?: string,
 ): Promise<{
     aiOutput: EvaluatedJob<BaseJob>[];
     comparison: GoldenComparisonResult;
     heuristics: HeuristicResult[];
+    metrics: ModelCallMetrics;
 }> {
     const modelConfig = modelConfigs[modelKey];
     const jobs: BaseJob[] = goldenDataset.map((entry) => entry.job);
 
     console.log(`🤖 Evaluating ${jobs.length} jobs with ${modelConfig.model}...`);
-    const { aiOutput } = await runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" });
+    const { aiOutput, response } = await runFilterLLMCall(jobs, modelConfig, { mode: "tolerant", prompt });
+
+    const metrics: ModelCallMetrics = {
+        totalDurationMs: response.total_duration / 1_000_000,
+        promptEvalDurationMs: response.prompt_eval_duration / 1_000_000,
+        evalDurationMs: response.eval_duration / 1_000_000,
+        inputTokens: response.prompt_eval_count,
+        outputTokens: response.eval_count,
+    };
 
     const comparison = compareGolden(goldenDataset, aiOutput);
     const heuristics = runStructuralHeuristics(jobs, aiOutput);
 
-    return { aiOutput, comparison, heuristics };
+    return { aiOutput, comparison, heuristics, metrics };
 }

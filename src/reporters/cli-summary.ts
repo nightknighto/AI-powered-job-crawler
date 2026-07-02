@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ReportContext, Reporter } from "./types.js";
-import { splitByStatus } from "../pipeline/report-helpers.js";
+import { splitByStatus } from "./report-helpers.js";
 
 /** Compact terminal summary — counts + passing job titles + file paths from sibling reporters.
  * Designed to complement file-writing reporters (html, markdown) in a composable setup.

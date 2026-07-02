@@ -49,7 +49,7 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
             await sleep(5000);
         },
         maxRequestsPerCrawl: 20,
-        // headless: false,
+        headless: false,
     });
 
     await crawler.run([START_URL]);

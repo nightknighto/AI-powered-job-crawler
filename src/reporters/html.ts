@@ -5,7 +5,7 @@ import { Marked } from "marked";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ReportContext, Reporter } from "./types.js";
-import { splitByStatus, sortByDate } from "../pipeline/report-helpers.js";
+import { splitByStatus, sortByDate } from "./report-helpers.js";
 
 /** Generates a styled HTML report with full-width tables, auto-opens in the default browser.
  * Saved to `reports/YYYY-MM-DD_HH-MM-SS.html`.

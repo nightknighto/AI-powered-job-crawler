@@ -125,6 +125,7 @@ src/
   config.ts                        — ModelConfig interface, modelConfigs map, shared settings
   eval.ts                          — Single-model golden dataset evaluation runner
   compare-models.ts                — Multi-model benchmark, ranks by PASS F1
+  compare-prompts.ts               — Prompt variant comparison runner (pnpm compare-prompts)
   types/
     base.ts                        — BaseJob interface (jobTitle, jobURL, company, location, date, jobDetails[])
     WuzzufJob.ts                   — Extends BaseJob with company, location, tags
@@ -137,13 +138,14 @@ src/
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
     evaluate.ts                    — Production filter stage; thin wrapper around run-filter.ts (strict mode)
-    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenDataset) (used by evaluate.ts, eval.ts, compare-models.ts)
+    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenDataset) (used by evaluate.ts, eval.ts, compare-models.ts, compare-prompts.ts)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
     prompts.ts                     — Loads the shared filter + job-summary prompts from prompts/*.md and exports filterPrompt, jobSummaryPrompt
     prompts/
       filter.md                    — Shared LLM filter prompt with {{jobs}} placeholder (used by all sites)
       job-summary.md               — Shared LLM job-summary prompt with {{passingJobs}} placeholder (used by all sites)
+      variants/                    — Prompt variant files for compare-prompts runner
   reporters/
     types.ts                       — Reporter interface, ReportContext, ReportOutput types
     composite.ts                   — CompositeReporter wraps multiple reporters, shares context
@@ -270,6 +272,8 @@ Each accomplishment should follow this pattern:
 - Models are configured in `src/config.ts` — the set can change at any time, check the file for current keys
 - `pnpm compare` runs all configured models and ranks by PASS F1
 - `pnpm eval <model>` runs a single model (by its config key) against the golden dataset
+- `pnpm compare-prompts <model>` runs prompt variant comparison for a given model against all variants in `src/pipeline/prompts/variants/`
+- `pnpm compare-prompts <model> --variants v1,v2` runs only the specified custom variants (+ baseline), skipping the rest
 - **`--site <name>`** scopes either script to one site's golden dataset (`wuzzuf` | `indeed` | `workable`) instead of the combined dataset — e.g. `pnpm eval qwenReason --site indeed`. Valid keys are the entries of `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts`
 - **Both scripts share the same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in `src/pipeline/run-filter.ts` — the caller resolves the dataset via `getGoldenDataset(site?)` and passes it in; `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
 - **Strict vs tolerant**: the production pipeline (`evaluate.ts`) calls `runFilterLLMCall(..., { mode: 'strict' })` which throws on unknown/duplicate/dropped URLs; eval scripts use `'tolerant'` mode (warn and continue) so noisy LLM output can still be scored

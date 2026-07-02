@@ -8,6 +8,7 @@
     "start": "tsx src/main.ts",
     "eval": "tsx src/eval.ts",
     "compare": "tsx src/compare-models.ts",
+    "compare-prompts": "tsx src/compare-prompts.ts",
     "check": "tsc --noEmit",
     "preview-reporter": "tsx src/reporters/preview.ts"
   },
