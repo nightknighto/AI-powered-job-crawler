@@ -44,6 +44,7 @@ export async function crawlIndeed(): Promise<IndeedJob[]> {
                 const jobDescription = $('#jobDescriptionText').text()
 
                 await pushData({
+                    site: "indeed",
                     jobTitle: jobTitle || 'N/A',
                     jobURL: request.url,
                     company: company.trim() || 'N/A',

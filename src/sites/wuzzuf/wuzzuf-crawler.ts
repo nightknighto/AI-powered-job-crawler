@@ -30,6 +30,7 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
                 const company = extractTextWithLineBreaks($, $('div.css-9iujih').first()).replace(' -', ''); // Get company name (first line before any location info)
 
                 await pushData({
+                    site: "wuzzuf",
                     jobTitle: $('h1.css-gkdl1m').text(),
                     jobURL: request.url,
                     company: company === '-' ? 'Confidential' : company, // Handle cases where company is hidden

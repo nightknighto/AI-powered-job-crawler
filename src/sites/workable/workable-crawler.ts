@@ -22,6 +22,7 @@ export async function crawlWorkable(): Promise<WorkableJob[]> {
                 const jobDetails = await Promise.all(breakdownSections.map(async (section) => await section.innerText() || 'N/A'));
 
                 await pushData({
+                    site: "workable",
                     jobTitle: await page.locator('[data-ui="overview-title"]').textContent() || 'N/A',
                     jobURL: request.url,
                     company: await page.locator('[data-ui="overview-company"] a').textContent() || 'N/A',

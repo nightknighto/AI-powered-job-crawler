@@ -8,6 +8,7 @@ import { IndeedJob } from "../../../types/IndeedJob.js";
 const realJobs: GoldenEntry<IndeedJob>[] = [
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior Full Stack Engineer, AI Builder",
             jobURL: "https://eg.indeed.com/viewjob?jk=ceae5c3890ff16ed",
             company: "CoverGo",
@@ -22,6 +23,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "DevOps Engineer",
             jobURL: "https://eg.indeed.com/viewjob?jk=47242bbad7f9d0bf",
             company: "Ericsson",
@@ -36,6 +38,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Technology Consulting - Data & AI - AI Engineers (Agentic AI) - Cairo",
             jobURL: "https://eg.indeed.com/viewjob?jk=298dd0a9993ccb9b",
             company: "EY",
@@ -50,6 +53,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior Full Stack Developer ( .Net / Angular )",
             jobURL: "https://eg.indeed.com/viewjob?jk=1cec9813f1d99d22",
             company: "BlackStone eIT",
@@ -64,6 +68,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior Software Engineer",
             jobURL: "https://eg.indeed.com/viewjob?jk=cb6c37f7bf70f953",
             company: "Finaira",
@@ -78,6 +83,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "System-Designer / Backend-Developer",
             jobURL: "https://eg.indeed.com/viewjob?jk=57a517070747317b",
             company: "Powerprozesse",
@@ -92,6 +98,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "DFT & Post-Silicon Validation",
             jobURL: "https://eg.indeed.com/viewjob?jk=2c44d3d7da21f324",
             company: "TechBiz Global GmbH",
@@ -106,6 +113,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior O365 Developer (Power Automate & Power Apps)",
             jobURL: "https://eg.indeed.com/viewjob?jk=ab00745f504085b3",
             company: "FlairsTech",
@@ -120,6 +128,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior Full Stack Developer",
             jobURL: "https://eg.indeed.com/viewjob?jk=0974cb44f2f0ccfb",
             company: "Khayira Holding Company",
@@ -134,6 +143,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Facilities Supervisor , Reliability Maintenance Engineering",
             jobURL: "https://eg.indeed.com/viewjob?jk=1de4072a239f476c",
             company: "Souq.com for E-Commerce LLC",
@@ -148,6 +158,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Tech Lead, Web Core Product & Chrome Extension - Cairo, Egypt",
             jobURL: "https://eg.indeed.com/viewjob?jk=23ed8ad64c6876d8",
             company: "Speechify",
@@ -162,6 +173,7 @@ const realJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "Senior Automation QA Engineer",
             jobURL: "https://eg.indeed.com/viewjob?jk=3b3124f2d002bf54",
             company: "Talent-360.me",
@@ -188,6 +200,7 @@ const syntheticJobs: GoldenEntry<IndeedJob>[] = [
     // .NET, C# stack
     {
         job: {
+            site: "indeed",
             jobTitle: "Full Stack Developer",
             jobURL: "https://eg.indeed.com/viewjob?jk=0974aa11f2f0ccfb",
             company: "Some Holding Company",
@@ -202,6 +215,7 @@ const syntheticJobs: GoldenEntry<IndeedJob>[] = [
     },
     {
         job: {
+            site: "indeed",
             jobTitle: "O365 Developer (Power Automate & Power Apps)",
             jobURL: "https://eg.indeed.com/viewjob?jk=aa11745f504085b3",
             company: "SomeCompany",

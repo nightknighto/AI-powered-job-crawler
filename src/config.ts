@@ -8,6 +8,8 @@ export interface ModelConfig {
     temperature: number;
     /** Whether to enable Ollama's thinking/reasoning mode. */
     think: boolean;
+    /** Number of context tokens to use for the model. */
+    num_ctx: number;
 }
 
 /** Pre-configured model variants keyed by camelCase identifier. */
@@ -16,11 +18,13 @@ export const modelConfigs = {
         model: "qwen-reason",
         temperature: 0.0,
         think: false,
+        num_ctx: 40000,
     },
     qwenSmall: {
         model: "qwen-small",
         temperature: 0.0,
         think: false,
+        num_ctx: 100000,
     },
     // gemma4: {
     //     model: "gemma4:e4b",

@@ -13,7 +13,7 @@ if (names.length === 0) {
 }
 
 const mockContext: ReportContext = {
-    site: wuzzufConfig,
+    siteName: wuzzufConfig.name,
     model: "preview-model",
     timestamp: new Date(),
     outputFiles: [],

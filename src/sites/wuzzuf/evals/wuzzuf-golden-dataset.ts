@@ -9,6 +9,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #1 — Senior Full Stack Developer (Doha, Qatar) → FAIL: Senior title + non-Egypt remote OK but Senior is hard reject
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Senior Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/lbuzsd9zelzl-senior-full-stack-developer-doha-qatar",
             company: "Confidential",
@@ -27,6 +28,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #2 — Senior QA Engineer (London, UK) → FAIL: Senior + QA (non-dev role)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Senior QA Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/itozuc6x5z7c-senior-qa-engineer-zealous-solutions-ltd-london-united-kingdom",
             company: "Zealous Solutions Ltd.",
@@ -45,6 +47,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #3 — Oracle APEX Developer (Cairo, Egypt, Hybrid) → FAIL: non-JS/TS stack (Oracle)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Oracle APEX Developer",
             jobURL: "https://wuzzuf.net/jobs/p/5fiergofyeuz-oracle-apex-developer-icis-cairo-egypt",
             company: "ICIS",
@@ -63,6 +66,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #4 — Full Stack Developer (Actum.cx, Cairo, Remote) → PASS: JS/TS stack, 0-10yr, remote, junior-friendly
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/lzugdm6ettas-full-stack-developer-actum-cx-cairo-egypt",
             company: "Actum.cx",
@@ -81,6 +85,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #5 — Technical SEO Specialist (Arlington, US, Remote) → FAIL: non-dev role (SEO)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Technical SEO Specialist",
             jobURL: "https://wuzzuf.net/jobs/p/cgylsyv5jf2u-technical-seo-specialist-harper-media-group-arlington-united-states",
             company: "Harper Media Group",
@@ -99,6 +104,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #6 — Full Stack Developer (Thobify, Riyadh Saudi Arabia, Remote) → PASS: Next.js/TS stack, remote OK (non-Egypt remote is OK), 3yr exp OK
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/saudi/jobs/p/cvujxzic6usq-full-stack-developer-thobify-riyadh-saudi-arabia",
             company: "Thobify",
@@ -117,6 +123,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #7 — Backend Node.js Developer (Alexandria, Egypt, Hybrid) → FAIL: 4+ years experience (>3yr threshold)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Backend Node js Developer",
             jobURL: "https://wuzzuf.net/jobs/p/cphbhepphcek-backend-node-js-developer-objects-alexandria-egypt",
             company: "Objects",
@@ -135,6 +142,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #8 — Technical Lead – Full Stack Developer (Makkah, Saudi Arabia) → FAIL: "Lead" in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Technical Lead – Full Stack Developer",
             jobURL: "https://wuzzuf.net/saudi/jobs/p/v40yllbxu3v2-technical-lead-full-stack-developer-ayvo-makkah-saudi-arabia",
             company: "Ayvo",
@@ -153,6 +161,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
     // #9 — Frontend Developer (Egypt, Hybrid) → PASS: React/TS stack, Egypt+Hybrid, 2yr exp
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/frontend-developer-company-cairo-egypt",
             company: "TechCo",
@@ -171,6 +180,7 @@ const realJobs: GoldenEntry<WuzzufJob>[] = [
 
     {
         job: {
+            site: "wuzzuf",
             "jobTitle": "Full Stack Software Developer",
             "jobURL": "https://wuzzuf.net/jobs/p/svn4rafjlfy5-full-stack-software-developer-stradigimc-cairo-egypt",
             "company": "Stradigimc",
@@ -197,6 +207,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #10 — Internship in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Development Internship",
             jobURL: "https://wuzzuf.net/jobs/p/internship-frontend-dev-cairo",
             company: "StartupHub",
@@ -215,6 +226,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #11 — Intern in description text (no intern in title)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Junior Web Developer",
             jobURL: "https://wuzzuf.net/jobs/p/junior-web-dev-intern-cairo",
             company: "WebAgency",
@@ -235,6 +247,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #12 — Senior title but explicitly says 2-3 years acceptable
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Senior Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/senior-frontend-dev-exception-cairo",
             company: "FlexiTech",
@@ -255,6 +268,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #13 — Manager in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Engineering Manager",
             jobURL: "https://wuzzuf.net/jobs/p/engineering-manager-cairo",
             company: "CorpTech",
@@ -273,6 +287,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #14 — Head of in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Head of Engineering",
             jobURL: "https://wuzzuf.net/jobs/p/head-of-engineering-cairo",
             company: "ScaleUp",
@@ -291,6 +306,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #15 — Principal in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Principal Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/principal-engineer-cairo",
             company: "BigCorp",
@@ -309,6 +325,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #16 — Director in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Director of Software Development",
             jobURL: "https://wuzzuf.net/jobs/p/director-software-cairo",
             company: "EnterpriseCo",
@@ -327,6 +344,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #17 — Staff in title
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Staff Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/staff-engineer-cairo",
             company: "MegaTech",
@@ -347,6 +365,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #18 — Flutter / mobile-first
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Mobile Developer",
             jobURL: "https://wuzzuf.net/jobs/p/flutter-mobile-dev-cairo",
             company: "AppHouse",
@@ -365,6 +384,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #19 — React Native mobile-first
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "React Native Developer",
             jobURL: "https://wuzzuf.net/jobs/p/react-native-dev-cairo",
             company: "MobileFirst",
@@ -383,6 +403,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #20 — PHP / Laravel
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/laravel-backend-dev-cairo",
             company: "PHPCorp",
@@ -401,6 +422,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #21 — Python / Django
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/django-backend-dev-cairo",
             company: "PyShop",
@@ -419,6 +441,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #22 — Java / Spring
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Java Developer",
             jobURL: "https://wuzzuf.net/jobs/p/java-spring-dev-cairo",
             company: "EnterpriseSoft",
@@ -437,6 +460,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #23 — .NET / C#
     {
         job: {
+            site: "wuzzuf",
             jobTitle: ".NET Developer",
             jobURL: "https://wuzzuf.net/jobs/p/dotnet-developer-cairo",
             company: "DotNetCorp",
@@ -455,6 +479,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #24 — Ruby / Rails
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Ruby on Rails Developer",
             jobURL: "https://wuzzuf.net/jobs/p/rails-dev-cairo",
             company: "RailsShop",
@@ -473,6 +498,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #25 — Kotlin
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Kotlin Developer",
             jobURL: "https://wuzzuf.net/jobs/p/kotlin-dev-cairo",
             company: "KotlinShop",
@@ -493,6 +519,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #26 — Product Manager
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Product Manager",
             jobURL: "https://wuzzuf.net/jobs/p/product-manager-cairo",
             company: "ProductCo",
@@ -511,6 +538,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #27 — UI/UX Designer
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "UI/UX Designer",
             jobURL: "https://wuzzuf.net/jobs/p/ui-ux-designer-cairo",
             company: "DesignStudio",
@@ -529,6 +557,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #28 — Data Analyst
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Data Analyst",
             jobURL: "https://wuzzuf.net/jobs/p/data-analyst-cairo",
             company: "DataCorp",
@@ -549,6 +578,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #29 — On-site only (no remote/hybrid in tags)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-onsite-cairo",
             company: "OnSiteCo",
@@ -567,6 +597,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #30 — Hybrid + non-Egypt location → FAIL
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/frontend-hybrid-dubai",
             company: "DubaiTech",
@@ -585,6 +616,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #31 — Remote + non-Egypt → PASS (remote from anywhere is OK)
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-remote-berlin",
             company: "BerlinStart",
@@ -603,6 +635,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #32 — Ambiguous stack (Node.js + Python equally prominent) → POTENTIAL_MATCH
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/fullstack-ambiguous-stack-cairo",
             company: "AmbigCorp",
@@ -623,6 +656,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #33 — Vue.js + TypeScript → PASS: Vue is JS/TS ecosystem, LLM might not recognize it
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/vue-frontend-dev-cairo",
             company: "VueHouse",
@@ -641,6 +675,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #34 — Angular + TypeScript, Egypt Hybrid → PASS: Angular is JS/TS, but LLMs sometimes don't categorize it
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/angular-frontend-giza",
             company: "AngularCorp",
@@ -659,6 +694,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #35 — Generic "Software Engineer" title, JS/TS primary but buried among DevOps/cloud buzzwords → PASS
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Software Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/software-engineer-cloud-cairo",
             company: "CloudScale",
@@ -677,6 +713,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #36 — Next.js job where Python is "nice to have" → PASS: tests ignoring secondary tech
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/nextjs-fullstack-alex",
             company: "DataWeb",
@@ -695,6 +732,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #37 — Express.js + MongoDB backend only, no frontend → PASS: pure backend JS is still dev
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/express-backend-mansoura",
             company: "APIShop",
@@ -713,6 +751,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #38 — Arabic description + Arabic tags, NestJS/TS → PASS: tests Arabic location parsing
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Backend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/nestjs-backend-arabic-cairo",
             company: "تكنو.sol",
@@ -731,6 +770,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #39 — "Mid-level" title (not senior), 3yr exp → PASS: mid-level ≠ senior, 3yr is the boundary and acceptable
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Mid-level Full Stack Developer",
             jobURL: "https://wuzzuf.net/jobs/p/midlevel-fullstack-cairo",
             company: "GrowthTech",
@@ -749,6 +789,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #40 — "JavaScript Developer" with vanilla JS + Node.js, no framework → PASS: plain JS counts
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "JavaScript Developer",
             jobURL: "https://wuzzuf.net/jobs/p/vanilla-js-dev-cairo",
             company: "PlainJS",
@@ -767,6 +808,7 @@ const syntheticJobs: GoldenEntry<WuzzufJob>[] = [
     // #41 — Full Stack Software Developer (Cairo, Egypt, Remote) → PASS: React/Node.js stack, Egypt+Remote, 3-6yr exp
     {
         job: {
+            site: "wuzzuf",
             "jobTitle": "Full Stack Software Developer",
             "jobURL": "https://wuzzuf.net/jobs/p/dawdawfawf-full-stack-software-developer-stradigimc-cairo-egypt",
             "company": "Stradigimc",

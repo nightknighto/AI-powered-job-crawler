@@ -13,11 +13,13 @@ Crawls job listings from Wuzzuf and Indeed Egypt, filters them through a local L
 
 ```bash
 pnpm install
-pnpm start wuzzuf   # crawl → evaluate → summarize → display (site is required)
-pnpm start indeed   # crawl Indeed Egypt instead
+pnpm start wuzzuf        # crawl → evaluate → summarize → display (single site)
+pnpm start indeed        # ...or any other single site
+pnpm start all           # run every site, merge into ONE unified report
+pnpm start wuzzuf,indeed # run a subset of sites, merged into one report
 ```
 
-**Available sites:** `wuzzuf`, `indeed`
+**Available sites:** `wuzzuf`, `indeed`, `workable`, `jooble`
 
 ## Architecture
 
@@ -55,10 +57,12 @@ flowchart LR
 
 | Stage | Description |
 |-------|-------------|
-| **Crawl** | Cheerio crawler fetches jobs from job boards (Wuzzuf: 4 URLs max 20 requests; Indeed Egypt: 2-stage, max 20 requests) |
-| **Evaluate** | Sends jobs to Ollama LLM with filter prompt → parses structured JSON with Zod |
-| **Summarize** | LLM-generated summary for passing jobs |
-| **Reporters** | Composable output — render to terminal tables, cards, summary, HTML, or markdown files |
+| **Crawl** | Cheerio/Playwright crawlers fetch jobs from job boards (each site: max 20 requests). Every crawled job is stamped with its origin `site` field. |
+| **Evaluate** | Sends jobs to Ollama LLM with filter prompt → parses structured JSON with Zod. In a multi-site run (`pnpm start all`), this stage runs **once per site** (small per-site prompts) then the results are merged. |
+| **Summarize** | One LLM-generated summary across **all** passing jobs from all sites (in a multi-site run) |
+| **Reporters** | Composable output — render to terminal tables, cards, summary, HTML, or markdown files. Every report includes a `Site` column so each job shows its origin. |
+
+**Single-site runs** (`pnpm start wuzzuf`) take an unchanged flat path. **Multi-site runs** (`all` or a comma-list) loop per site with skip-and-continue: if one site's crawl or filter call fails, the others still produce a unified report (with a "Skipped" note listing the failed site and reason). Output files are namespaced by site label: `reports/all-<timestamp>.html`, `reports/wuzzuf-indeed-<timestamp>.html`.
 
 See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`src/reporters/README.md`](src/reporters/README.md) for reporter details, and [`src/sites/README.md`](src/sites/README.md) for site-specific implementation details.
 
@@ -87,7 +91,7 @@ Models are configured in [`src/config.ts`](src/config.ts). Check that file for t
 
 ```ts
 const modelConfigs = {
-  myModel: { model: 'ollama-model-tag', temperature: 0.2, think: false },
+  myModel: { model: 'ollama-model-tag', temperature: 0.2, think: false, num_ctx: 40000 },
   // ...existing configs
 } as const satisfies Record<string, ModelConfig>;
 ```
@@ -109,9 +113,10 @@ export const shared = {
 
 | Script | Command | Description |
 |--------|---------|-------------|
-| `pnpm start <site>` | `tsx src/main.ts <site>` | Full pipeline: crawl, evaluate, summarize, display (site required) |
+| `pnpm start <site>` | `tsx src/main.ts <site>` | Full pipeline for one site. Also accepts `all` (every site, unified report) or a comma-list like `wuzzuf,indeed`. |
 | `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model. Add `--site <name>` to scope to one site |
 | `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1. Add `--site <name>` to scope to one site |
+| `pnpm compare-prompts <model>` | `tsx src/compare-prompts.ts` | Compare prompt variants for a model. Add `--variants v1,v2` and/or `--site <name>`. |
 | `pnpm preview-reporter <names...>` | `tsx src/reporters/preview.ts` | Preview reporters with sample data |
 | `pnpm check` | `tsc --noEmit` | Type-check without emitting |
 

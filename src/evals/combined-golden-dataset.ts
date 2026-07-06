@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { indeedGoldenDataset } from "../sites/indeed/evals/indeed-golden-dataset.js";
 import { joobleGoldenDataset } from "../sites/jooble/evals/jooble-golden-dataset.js";
 import { workableGoldenDataset } from "../sites/workable/evals/workable-golden-dataset.js";
@@ -26,6 +27,10 @@ export const goldenDatasetsBySite = {
 
 /** Union of all site keys that have a golden dataset (e.g. `'wuzzuf' | 'indeed' | 'workable' | 'jooble'`). */
 export type GoldenSiteKey = keyof typeof goldenDatasetsBySite;
+
+/** Zod schema validating a `site` field against the registered site keys.
+ * Kept in sync with {@link GoldenSiteKey} by deriving from `goldenDatasetsBySite`'s keys. */
+export const siteKeySchema = z.enum(Object.keys(goldenDatasetsBySite) as [GoldenSiteKey, ...GoldenSiteKey[]]);
 
 /**
  * Resolve the golden dataset for a benchmark run.

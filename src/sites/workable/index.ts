@@ -2,8 +2,10 @@ import { z } from "zod";
 import { SiteConfig } from "../../types/site-config.js";
 import { WorkableJob } from "../../types/WorkableJob.js";
 import { crawlWorkable } from "./workable-crawler.js";
+import { siteKeySchema } from "../../evals/combined-golden-dataset.js";
 
 const jobSchema = z.object({
+    site: siteKeySchema,
     jobTitle: z.string(),
     jobURL: z.string(),
     company: z.string(),

@@ -1,13 +1,13 @@
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
-import { SiteConfig } from "../types/site-config.js";
 
 /** Context passed to all reporters during display.
  * Shared across composable reporters — `outputFiles` accumulates paths from file-writing reporters.
  */
 export interface ReportContext {
-    /** The site configuration that produced these jobs. */
-    site: SiteConfig<BaseJob>;
+    /** Report label derived from the run (e.g. `'all'`, `'wuzzuf'`, `'wuzzuf-indeed'`).
+     * Used for output filenames and headers. For per-job origin, read each job's `job.site` field. */
+    siteName: string;
     /** The Ollama model tag used for evaluation. */
     model: string;
     /** Timestamp of the pipeline run. */
@@ -15,6 +15,10 @@ export interface ReportContext {
     /** Mutable list of file paths written by file-output reporters.
      * File-writing reporters push their paths here; display-only reporters read them. */
     outputFiles: string[];
+    /** Sites that failed and were skipped during a multi-site run (omitted when nothing was skipped). */
+    skippedSites?: { site: string; reason: string }[];
+    /** Jobs the LLM dropped from its filter output (input jobs with no verdict). Omitted when none. */
+    droppedJobs?: { site: string; jobURL: string; jobTitle: string }[];
 }
 
 /** Interface for all output reporters. Each reporter handles one output format. */

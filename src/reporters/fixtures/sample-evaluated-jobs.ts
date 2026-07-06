@@ -7,6 +7,7 @@ import { WuzzufJob } from "../../types/WuzzufJob.js";
 export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Senior React Developer",
             jobURL: "https://wuzzuf.net/jobs/p/senior-react-developer-abc123",
             company: "TechCorp Egypt",
@@ -22,6 +23,7 @@ export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     },
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Frontend Developer",
             jobURL: "https://wuzzuf.net/jobs/p/frontend-developer-def456",
             company: "StartupHub",
@@ -37,6 +39,7 @@ export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     },
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Junior Backend Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/junior-backend-engineer-ghi789",
             company: "DataFlow Solutions",
@@ -52,6 +55,7 @@ export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     },
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "DevOps Engineer",
             jobURL: "https://wuzzuf.net/jobs/p/devops-engineer-jkl012",
             company: "CloudNine",
@@ -67,6 +71,7 @@ export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     },
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Lead Product Designer",
             jobURL: "https://wuzzuf.net/jobs/p/lead-product-designer-mno345",
             company: "DesignFirst",
@@ -80,6 +85,7 @@ export const sampleEvaluatedJobs: EvaluatedJob<WuzzufJob>[] = [
     },
     {
         job: {
+            site: "wuzzuf",
             jobTitle: "Data Analyst",
             jobURL: "https://wuzzuf.net/jobs/p/data-analyst-pqr678",
             company: "InsightMetrics",

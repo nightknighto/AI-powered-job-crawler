@@ -16,8 +16,15 @@ marked.use(markedTerminal({
  * No table layout, so long fields (skills, reason) get full terminal width.
  */
 export class CliCardReporter implements Reporter {
-    async display(jobs: EvaluatedJob<BaseJob>[], summary: string, _ctx: ReportContext): Promise<void> {
+    async display(jobs: EvaluatedJob<BaseJob>[], summary: string, ctx: ReportContext): Promise<void> {
         const { passing, failing } = splitByStatus(jobs);
+
+        if (ctx.droppedJobs?.length) {
+            console.log(chalk.bold.yellow(`\n🫥 Dropped by LLM (${ctx.droppedJobs.length})\n`));
+            for (const d of ctx.droppedJobs) {
+                console.log(`  ${chalk.dim(`[${d.site}]`)} ${d.jobTitle} — ${chalk.dim(d.jobURL)}`);
+            }
+        }
 
         if (passing.length > 0) {
             console.log(chalk.bold.green("\n✅ Passing Jobs (including Potential Matches)\n"));
@@ -46,6 +53,7 @@ export class CliCardReporter implements Reporter {
         console.log(`\n${sep}`);
         console.log(`  ${title} - ${chalk.blueBright(job.job.company)}`);
         console.log(`${sep}`);
+        console.log(`  ${chalk.dim("Site:")}        ${job.job.site}`);
         console.log(`  ${chalk.dim("Location:")}   ${job.job.location}`);
         console.log(`  ${chalk.dim("Date:")}       ${job.job.date}`);;
         console.log(`  ${chalk.dim("Experience:")} ${job.experienceLevel ?? "N/A"}`);

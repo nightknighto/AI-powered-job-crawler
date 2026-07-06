@@ -61,7 +61,7 @@ function tableRow<T extends BaseJob>(job: EvaluatedJob<T>): string {
     const skills = job.skills?.join(", ") ?? "N/A";
     const reason = job.reason.join("; ");
 
-    return `| ${esc(job.job.jobTitle)} | ${esc(job.job.company)} | ${esc(job.job.location)} | ${esc(job.job.date)} | ${esc(experience)} | ${esc(skills)} | ${esc(reason)} |`;
+    return `| ${esc(job.job.site)} | ${esc(job.job.jobTitle)} | ${esc(job.job.company)} | ${esc(job.job.location)} | ${esc(job.job.date)} | ${esc(experience)} | ${esc(skills)} | ${esc(reason)} |`;
 }
 
 /** Build the deterministic report section: two tables + summary counts.
@@ -73,8 +73,8 @@ export function buildReportTables<T extends BaseJob>(jobs: EvaluatedJob<T>[]): s
     const failingSorted = sortByDate(failing);
 
     const header =
-        "| Job Title | Company | Location | Posted Date | Experience | Skills | Reason |\n" +
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |";
+        "| Site | Job Title | Company | Location | Posted Date | Experience | Skills | Reason |\n" +
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |";
 
     const passingTable =
         `## ✅ Passing Jobs (including Potential Matches)\n\n` +
@@ -93,4 +93,23 @@ export function buildReportTables<T extends BaseJob>(jobs: EvaluatedJob<T>[]): s
         `- Filtered out: ${failing.length} (FAIL)`;
 
     return `${passingTable}\n\n${failingTable}\n\n${summary}`;
+}
+
+/** Build a markdown section listing jobs the LLM dropped from its filter output.
+ * Returns an empty string when there are no dropped jobs (so callers can append unconditionally).
+ * @param droppedJobs - Dropped jobs with their origin site, URL, and title.
+ */
+export function buildDroppedJobsSection(
+    droppedJobs: { site: string; jobURL: string; jobTitle: string }[] | undefined,
+): string {
+    if (!droppedJobs || droppedJobs.length === 0) return "";
+
+    const header =
+        "| Site | Job Title | URL |\n" +
+        "| :--- | :--- | :--- |";
+    const rows = droppedJobs
+        .map((d) => `| ${esc(d.site)} | ${esc(d.jobTitle)} | ${esc(d.jobURL)} |`)
+        .join("\n");
+
+    return `## 🫥 Dropped by LLM (${droppedJobs.length})\n\nThese input jobs received no verdict from the LLM and are absent from the tables above.\n\n${header}\n${rows}`;
 }

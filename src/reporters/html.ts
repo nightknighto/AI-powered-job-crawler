@@ -13,7 +13,7 @@ import { splitByStatus, sortByDate } from "./report-helpers.js";
 export class HtmlReporter implements Reporter {
     async display(jobs: EvaluatedJob<BaseJob>[], summary: string, ctx: ReportContext): Promise<void> {
         const timestamp = ctx.timestamp.toISOString().replace(/[T:]/g, "-").slice(0, 19);
-        const filename = `${timestamp}.html`;
+        const filename = `${ctx.siteName}-${timestamp}.html`;
         const dir = "reports";
         const filePath = join(dir, filename);
 
@@ -43,7 +43,8 @@ export class HtmlReporter implements Reporter {
   * { box-sizing: border-box; margin: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #f8f9fa; color: #212529; max-width: 1400px; margin: 0 auto; }
   h1 { margin-bottom: 8px; }
-  .meta { color: #6c757d; margin-bottom: 32px; }
+  .meta { color: #6c757d; margin-bottom: 8px; }
+  .skipped { color: #b94a48; margin-bottom: 24px; }
   h2 { margin: 32px 0 16px; }
   table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   th { background: #343a40; color: white; text-align: left; padding: 12px 16px; font-weight: 600; }
@@ -65,7 +66,9 @@ export class HtmlReporter implements Reporter {
 </head>
 <body>
 <h1>Job Search Report</h1>
-<p class="meta">${ctx.timestamp.toLocaleString()} · Model: ${ctx.model} · Site: ${ctx.site.name}</p>
+<p class="meta">${ctx.timestamp.toLocaleString()} · Model: ${ctx.model} · Sites: ${[...new Set(jobs.map((j) => j.job.site))].join(", ")}</p>
+${ctx.skippedSites?.length ? `<p class="skipped">⚠️ Skipped: ${ctx.skippedSites.map((s) => `${s.site} (${s.reason})`).join(" · ")}</p>` : ""}
+${ctx.droppedJobs?.length ? `<p class="skipped">🫥 Dropped by LLM (${ctx.droppedJobs.length}): ${ctx.droppedJobs.map((d) => `[${d.site}] <a href="${d.jobURL}" target="_blank">${d.jobTitle}</a>`).join(" · ")}</p>` : ""}
 
 <div class="counts">
   <div class="count-box"><div class="number pass">${passing.length}</div><div class="label">Passing</div></div>
@@ -75,7 +78,7 @@ export class HtmlReporter implements Reporter {
 
 <h2 class="pass">✅ Passing Jobs (including Potential Matches)</h2>
 <table>
-<thead><tr><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
+<thead><tr><th>Site</th><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
 <tbody>
 ${passingSorted.map((j) => this.tableRow(j)).join("\n")}
 </tbody>
@@ -84,7 +87,7 @@ ${passingSorted.map((j) => this.tableRow(j)).join("\n")}
 <details>
 <summary class="fail">❌ Filtered Out Jobs (${failing.length})</summary>
 <table>
-<thead><tr><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
+<thead><tr><th>Site</th><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
 <tbody>
 ${failingSorted.map((j) => this.tableRow(j)).join("\n")}
 </tbody>
@@ -103,7 +106,7 @@ ${summary ? `<h2>📝 Detailed Summary</h2><div class="summary-section">${new Ma
         const reason = job.reason.join("; ");
         const title = `<a href="${esc(job.job.jobURL)}" target="_blank">${esc(job.job.jobTitle)}</a>`;
 
-        return `<tr><td>${title}</td><td>${esc(job.job.company)}</td><td>${esc(job.job.location)}</td><td>${esc(job.job.date)}</td><td>${esc(experience)}</td><td>${esc(skills)}</td><td>${esc(reason)}</td></tr>`;
+        return `<tr><td>${esc(job.job.site)}</td><td>${title}</td><td>${esc(job.job.company)}</td><td>${esc(job.job.location)}</td><td>${esc(job.job.date)}</td><td>${esc(experience)}</td><td>${esc(skills)}</td><td>${esc(reason)}</td></tr>`;
     }
 
     private escapeHtml(s: string): string {

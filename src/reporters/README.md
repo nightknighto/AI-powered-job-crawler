@@ -18,10 +18,12 @@ Shared context passed to all reporters in a composable run:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `site` | `SiteConfig` | The site configuration being processed |
+| `siteName` | `string` | Report label derived from the run — `'all'`, `'wuzzuf'`, or `'wuzzuf-indeed'` (used for filenames and headers). For per-job origin, read each job's `job.site` field. |
 | `model` | `string` | Model name used for evaluation |
 | `timestamp` | `Date` | Report generation time |
 | `outputFiles` | `string[]` | Mutable array — file-writing reporters push paths here for sibling reporters to reference |
+| `skippedSites?` | `{ site, reason }[]` | Sites that failed and were skipped during a multi-site run (omitted when nothing was skipped) |
+| `droppedJobs?` | `{ site, jobURL, jobTitle }[]` | Jobs the LLM dropped from its filter output (input jobs that received no verdict). Omitted when none. Rendered as a "Dropped by LLM" section. |
 
 ### `ReportOutput` (`types.ts`)
 
@@ -39,8 +41,8 @@ interface ReportOutput {
 | `cli-table` | `cli-table.ts` | Terminal markdown tables via `marked-terminal` + `chalk`. Preserves original display behavior. |
 | `cli-card` | `cli-card.ts` | Stacked card format — one job per block, each field on its own line. Long skills/reason text gets full terminal width. |
 | `cli-summary` | `cli-summary.ts` | Compact: status counts, passing job titles as bullets, file paths from `ctx.outputFiles`. Designed to complement file-writing reporters. |
-| `html` | `html.ts` | Styled HTML with inline CSS, 7-column tables, clickable job titles, collapsible filtered section. Auto-opens in default browser. Saved to `reports/`. |
-| `markdown` | `markdown.ts` | Writes deterministic tables + LLM summary to a timestamped `.md` file. Saved to `reports/`. |
+| `html` | `html.ts` | Styled HTML with inline CSS, 8-column tables (incl. `Site`), clickable job titles, collapsible filtered section, "Sites:" header derived from jobs, "Skipped" note for failed sites. Auto-opens in default browser. Saved to `reports/<siteName>-<timestamp>.html`. |
+| `markdown` | `markdown.ts` | Writes deterministic tables (incl. `Site` column) + LLM summary to a `<siteName>-<timestamp>.md` file. Saved to `reports/`. |
 
 ## Factory & Composition
 

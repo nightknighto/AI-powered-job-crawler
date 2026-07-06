@@ -4,6 +4,7 @@ import { WorkableJob } from "../../../types/WorkableJob.js";
 const realJobs: GoldenEntry<WorkableJob>[] = [
     {
         job: {
+            site: "workable",
             "jobTitle": "Senior ReactJS Developer",
             "jobURL": "https://jobs.workable.com/view/6GzYXug1sPgBug93Yd6bJH/hybrid-senior-reactjs-developer-in-nasr-city-at-advansys",
             "company": "Advansys",
@@ -18,6 +19,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "Front-End, Senior Developer",
             "jobURL": "https://jobs.workable.com/view/1fbCN4cPbQQRug96sgBBGa/remote-front-end%2C-senior-developer-in-cairo-at-adree",
             "company": "Adree",
@@ -33,6 +35,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "ServiceNow Integration & Infrastructure Specialist (MID Server, GCP, SSO)",
             "jobURL": "https://jobs.workable.com/view/e4Ma9y9ytVpTvry5M1TsVL/remote-servicenow-integration-%26-infrastructure-specialist-(mid-server%2C-gcp%2C-sso)-in-cairo-at-m%C3%BCller%60s-solutions",
             "company": "Müller`s Solutions",
@@ -48,6 +51,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "ServiceNow Developer (Remediation & Testing)",
             "jobURL": "https://jobs.workable.com/view/o79m5MtcR6rX7xgqDGgQYj/remote-servicenow-developer-(remediation-%26-testing)-in-cairo-at-m%C3%BCller%60s-solutions",
             "company": "Müller`s Solutions",
@@ -63,6 +67,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "SAP Portal SME MS (German Speaker)",
             "jobURL": "https://jobs.workable.com/view/smbKkucvjKPYAzEfKqMo7c/hybrid-sap-portal-sme-ms-(german-speaker)-in-cairo-at-ssc-hr-solutions",
             "company": "SSC HR Solutions",
@@ -78,6 +83,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "Engineering Manager",
             "jobURL": "https://jobs.workable.com/view/jb3pGWS2aXTQH72E5PLxnG/hybrid-engineering-manager-in-new-cairo-city-at-talent-360.me",
             "company": "Talent-360.me",
@@ -94,6 +100,7 @@ const realJobs: GoldenEntry<WorkableJob>[] = [
     },
     {
         job: {
+            site: "workable",
             "jobTitle": "Senior Mendix Developer.",
             "jobURL": "https://jobs.workable.com/view/83r9kY8AoToALWdvuTuTwi/remote-senior-mendix-developer.-in-cairo-at-ssc-hr-solutions",
             "company": "SSC HR Solutions",

@@ -30,6 +30,7 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
                 });
             } else {
                 await pushData({
+                    site: "jooble",
                     jobTitle: await page.locator('[data-test-name="_jdpHeaderBlock"] h1').textContent() || 'N/A',
                     jobURL: request.url,
                     company: await page.locator('div[style*="translate3d(0%"] [data-test-name="_companyName"]').textContent() || 'N/A',

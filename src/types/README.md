@@ -8,7 +8,8 @@ Runtime-validated type definitions for job listings, evaluation results, site co
 BaseJob (base.ts)
   ├── WuzzufJob (WuzzufJob.ts)
   ├── IndeedJob (IndeedJob.ts)
-  └── WorkableJob (WorkableJob.ts)
+  ├── WorkableJob (WorkableJob.ts)
+  └── JoobleJob (JoobleJob.ts)
 ```
 
 Generic wrappers:
@@ -34,6 +35,7 @@ Base interface for all job listings:
 | `location` | `string` | Job location |
 | `date` | `string` | Posting date (relative string, e.g. "posted 2 days ago") |
 | `jobDetails` | `string[]` | Array of job description lines |
+| `site` | `GoldenSiteKey` | Origin site key (`'wuzzuf' \| 'indeed' \| 'workable' \| 'jooble'`). Stamped by each crawler for production jobs; declared as a literal in golden datasets. Lets a multi-site run merge jobs while preserving each job's origin. |
 
 ### `WuzzufJob` (`WuzzufJob.ts`)
 

@@ -220,7 +220,7 @@ export function writeCompareReport(args: CompareReportArgs): string {
     const perModelSections = sorted.map((m) =>
         renderEvalSection({
             modelKey: m.modelKey,
-            modelConfig: { model: m.modelName, temperature: 0.2, think: false },
+            modelConfig: { model: m.modelName, temperature: 0.2, think: false, num_ctx: 0 },
             comparison: m.comparison,
             heuristics: m.heuristics,
             goldenDataset: args.goldenDataset,

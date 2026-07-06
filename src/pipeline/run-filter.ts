@@ -45,24 +45,36 @@ function logTimingAndTokens(response: ChatResponse): void {
     );
 }
 
+/** A job the LLM dropped from its filter output (input job with no corresponding verdict). */
+export interface DroppedJob {
+    jobURL: string;
+    jobTitle: string;
+}
+
 /** Re-attach original jobs to LLM output via URL matching, with dedup and dropped-job detection.
  *
- * - `'strict'` mode: throws on unknown, duplicate, or dropped URLs. Used by the production pipeline
- *   (`src/pipeline/evaluate.ts`) where any LLM misbehavior is a hard error.
- * - `'tolerant'` mode: warns and continues. Used by eval scripts (`src/eval.ts`, `src/compare-models.ts`)
- *   so noisy LLM output can still be scored against the golden dataset.
+ * - `'strict'` mode: throws on **unknown or duplicate** URLs (genuine LLM malfunction). Used by the
+ *   production pipeline (`src/pipeline/evaluate.ts`).
+ * - `'tolerant'` mode: warns and continues on unknown/duplicate URLs. Used by eval scripts
+ *   (`src/eval.ts`, `src/compare-models.ts`) so noisy LLM output can still be scored against the
+ *   golden dataset.
+ *
+ * **Dropped jobs are always non-fatal**: any input URL the LLM omitted from its output is collected
+ * into the returned `dropped` array (and logged as a warning) regardless of mode. The caller decides
+ * whether/how to surface dropped jobs (e.g. the production report lists them). This is a common LLM
+ * hiccup and should not throw away an entire site's worth of results over a few missing URLs.
  *
  * @template T - The site-specific job type.
  * @param jobs - The original input jobs fed to the LLM.
  * @param parsed - The parsed LLM filter output.
- * @param mode - Strict (throw) or tolerant (warn).
- * @returns Evaluated jobs (with original job data re-attached), in LLM-output order.
+ * @param mode - Strict (throw on unknown/duplicate) or tolerant (warn).
+ * @returns Evaluated jobs (with original job data re-attached), in LLM-output order, plus any dropped jobs.
  */
 function mergeJobsByUrl<T extends BaseJob>(
     jobs: T[],
     parsed: ParsedLlmEvaluation,
     mode: MergeMode,
-): EvaluatedJob<T>[] {
+): { evaluated: EvaluatedJob<T>[]; dropped: DroppedJob[] } {
     const jobByUrl = new Map<string, T>();
     for (const job of jobs) {
         jobByUrl.set(job.jobURL, job);
@@ -100,33 +112,40 @@ function mergeJobsByUrl<T extends BaseJob>(
         evaluated.push({ job, status, reason, experienceLevel, skills });
     }
 
+    // Dropped jobs are always non-fatal: collect them for the caller to surface.
+    const dropped: DroppedJob[] = [];
     if (outputUrls.size !== inputUrls.size) {
-        const missing = [...inputUrls].filter((url) => !outputUrls.has(url));
-        const msg = `LLM dropped ${missing.length} job(s) from output: ${missing.join(", ")}`;
-        if (mode === "strict") throw new Error(msg);
-        console.warn(`⚠️  ${msg}`);
+        for (const job of jobs) {
+            if (!outputUrls.has(job.jobURL)) {
+                dropped.push({ jobURL: job.jobURL, jobTitle: job.jobTitle });
+            }
+        }
+        if (dropped.length > 0) {
+            console.warn(`⚠️  LLM dropped ${dropped.length} job(s) from output: ${dropped.map((d) => d.jobTitle).join(", ")}`);
+        }
     }
 
-    return evaluated;
+    return { evaluated, dropped };
 }
 
 /** Core: build the filter prompt, call Ollama, log timing, parse output, and merge back to jobs.
  *
  * This is the single source of truth for the LLM filter call. The production pipeline
  * (`src/pipeline/evaluate.ts`) uses it in `'strict'` mode; the eval scripts use it (via
- * {@link runFilterEval}) in `'tolerant'` mode.
+ * {@link runFilterEval}) in `'tolerant'` mode. The mode governs unknown/duplicate-URL handling only;
+ * dropped jobs are always collected (non-fatal) and returned in `dropped`.
  *
  * @template T - The site-specific job type.
  * @param jobs - Raw jobs to filter.
  * @param modelConfig - The Ollama model configuration to use.
- * @param options.mode - `'strict'` (throw on bad URLs) or `'tolerant'` (warn and continue).
- * @returns The evaluated jobs plus the raw Ollama response (for callers that need extra fields).
+ * @param options.mode - `'strict'` (throw on unknown/duplicate URLs) or `'tolerant'` (warn and continue).
+ * @returns The evaluated jobs, any dropped jobs, plus the raw Ollama response (for callers that need extra fields).
  */
 export async function runFilterLLMCall<T extends BaseJob>(
     jobs: T[],
     modelConfig: ModelConfig,
     options: { mode: MergeMode; prompt?: string },
-): Promise<{ aiOutput: EvaluatedJob<T>[]; response: ChatResponse }> {
+): Promise<{ aiOutput: EvaluatedJob<T>[]; dropped: DroppedJob[]; response: ChatResponse }> {
     const promptContent = (options.prompt ?? filterPrompt).replace("{{jobs}}", JSON.stringify(jobs, null, 2));
 
     const response = await ollama.chat({
@@ -135,15 +154,18 @@ export async function runFilterLLMCall<T extends BaseJob>(
         think: modelConfig.think,
         messages: [{ role: "user", content: promptContent }],
         format: z.toJSONSchema(jobEvaluationSchema),
-        options: { temperature: modelConfig.temperature },
+        options: {
+            temperature: modelConfig.temperature,
+            num_ctx: modelConfig.num_ctx,
+        },
     });
 
     logTimingAndTokens(response);
 
     const parsed = parseLlmOutput(response.message.content);
-    const aiOutput = mergeJobsByUrl(jobs, parsed, options.mode);
+    const { evaluated: aiOutput, dropped } = mergeJobsByUrl(jobs, parsed, options.mode);
 
-    return { aiOutput, response };
+    return { aiOutput, dropped, response };
 }
 
 /** Timing and token metrics extracted from an Ollama {@link ChatResponse}. */
@@ -181,6 +203,7 @@ export async function runFilterEval(
     prompt?: string,
 ): Promise<{
     aiOutput: EvaluatedJob<BaseJob>[];
+    dropped: DroppedJob[];
     comparison: GoldenComparisonResult;
     heuristics: HeuristicResult[];
     metrics: ModelCallMetrics;
@@ -189,7 +212,7 @@ export async function runFilterEval(
     const jobs: BaseJob[] = goldenDataset.map((entry) => entry.job);
 
     console.log(`🤖 Evaluating ${jobs.length} jobs with ${modelConfig.model}...`);
-    const { aiOutput, response } = await runFilterLLMCall(jobs, modelConfig, { mode: "tolerant", prompt });
+    const { aiOutput, dropped, response } = await runFilterLLMCall(jobs, modelConfig, { mode: "tolerant", prompt });
 
     const metrics: ModelCallMetrics = {
         totalDurationMs: response.total_duration / 1_000_000,
@@ -202,5 +225,5 @@ export async function runFilterEval(
     const comparison = compareGolden(goldenDataset, aiOutput);
     const heuristics = runStructuralHeuristics(jobs, aiOutput);
 
-    return { aiOutput, comparison, heuristics, metrics };
+    return { aiOutput, dropped, comparison, heuristics, metrics };
 }
