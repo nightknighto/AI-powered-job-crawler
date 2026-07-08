@@ -49,7 +49,7 @@ if (arg === "all") {
     selectedSites = keys.map((k) => sites[k as keyof typeof sites]);
 }
 
-console.log(`Crawling site(s): ${selectedSites.map((s) => s.name).join(", ")} (crawl-only, no LLM filter)`);
+console.log(`Crawling site(s): ${selectedSites.map((s) => s.key).join(", ")} (crawl-only, no LLM filter)`);
 
 /** Timestamp matching the reporters' filename convention: `YYYY-MM-DD-HH-MM-SS` (UTC). */
 function formatTimestamp(date: Date): string {
@@ -64,13 +64,13 @@ for (const site of selectedSites) {
     total += jobs.length;
 
     mkdirSync(dir, { recursive: true });
-    const filename = `crawl-${site.name}-${formatTimestamp(new Date())}.json`;
+    const filename = `crawl-${site.key}-${formatTimestamp(new Date())}.json`;
     const filePath = join(dir, filename);
     writeFileSync(filePath, JSON.stringify(jobs, null, 2), "utf-8");
 
     // Quick on-screen sanity check: count + first ~10 titles. With `--verbose`,
     // print the full JSON of those jobs instead of just the title line.
-    console.log(`\n${site.name}: ${jobs.length} job${jobs.length === 1 ? "" : "s"}`);
+    console.log(`\n${site.key}: ${jobs.length} job${jobs.length === 1 ? "" : "s"}`);
     const preview = jobs.slice(0, 10);
     if (verbose) {
         console.log(JSON.stringify(preview, null, 2));

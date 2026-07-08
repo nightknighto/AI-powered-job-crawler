@@ -22,15 +22,21 @@ Sites are abstracted behind `SiteConfig<T extends BaseJob>`:
 
 ```ts
 interface SiteConfig<T extends BaseJob> {
-  name: string;
-  crawl: () => Promise<T[]>;
-  jobSchema: ZodType<T>;
+  key: SiteKey;                              // registry key + display name (e.g. "wuzzuf")
+  crawl: () => Promise<Omit<T, "site">[]>;   // returns jobs WITHOUT a `site` field
+  jobSchema: ZodType<Omit<T, "site">>;       // validates the non-`site` fields only
 }
 ```
 
-Sites only describe **crawling** and the **raw job shape** — to add a site, implement this interface and register it in `src/sites/registry.ts`.
+Sites only describe **crawling** and the **raw job shape** — to add a site, implement this interface and register it in `src/sites/registry.ts`. The `site` field is deliberately **not** part of `SiteConfig`: crawlers return jobs without it, and `src/pipeline/crawl.ts` stamps it centrally from `key`, so every job's origin is derived from its registry slot. This decoupling means a site can be crawled and filtered **without** first shipping a golden dataset.
 
 > The **filter prompt**, the **job-summary prompt**, and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`filterPrompt`, `jobSummaryPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering and summarizing behave identically across all sites.
+
+### `SiteKey` vs `GoldenSiteKey` (type hierarchy)
+
+`SiteKey` is the **source of truth** for `BaseJob.site`. It is derived directly from the production `sites` registry in `src/sites/registry.ts` (`export type SiteKey = keyof typeof sites`), so it covers every crawlable site — currently `'wuzzuf' | 'indeed' | 'workable' | 'jooble' | 'linkedin'`.
+
+`GoldenSiteKey` is the **eval subset** of `SiteKey`, defined in `src/evals/combined-golden-dataset.ts` as `Extract<SiteKey, keyof typeof goldenDatasetsBySite>`. It covers only sites that have a golden dataset (`'wuzzuf' | 'indeed' | 'workable' | 'jooble'`), and it's the type the `--site` CLI flag validates against. The dependency direction is **production → eval**: `BaseJob.site: SiteKey`, and `GoldenSiteKey` is a narrowing of it. Never invert this — production must not import from `src/evals/`.
 
 ### Prompt templates with `{{placeholder}}` substitution
 
@@ -82,7 +88,7 @@ Reporter keys are lowercase-hyphen strings registered in `src/reporters/index.ts
 
 For multi-site runs, crawl → evaluate loop **once per site** (small per-site filter prompts; one malformed LLM output only loses one site), with **skip-and-continue**: a failed site is logged and recorded in `ReportContext.skippedSites` rather than aborting the whole run. Evaluated results are merged, then **one** combined summary LLM call covers all passing jobs. Reporters run once over the merged set, producing a single unified report named after the run (`reports/all-<timestamp>.html`, `reports/wuzzuf-indeed-<timestamp>.html`, etc.). Each job's origin shows in a `Site` column; the report header lists the actual sites present (derived from job data).
 
-This relies on every job carrying a `site: GoldenSiteKey` field (see `BaseJob`). Crawlers stamp it for production jobs; golden datasets declare it as a literal — so the eval path also carries `site` through (it appears in the prompt JSON as harmless read-only context; the LLM never outputs it, and `mergeJobsByUrl` reattaches the full original job by reference).
+This relies on every job carrying a `site: SiteKey` field (see `BaseJob`). `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key` for production jobs; golden datasets declare it as a literal — so the eval path also carries `site` through (it appears in the prompt JSON as harmless read-only context; the LLM never outputs it, and `mergeJobsByUrl` reattaches the full original job by reference).
 
 ### Verdict cache (production only)
 
@@ -130,44 +136,41 @@ To add a new job board site:
      // Add any site-specific fields
    }
    ```
-   - `BaseJob` already includes a required `site: GoldenSiteKey` field — inherited automatically.
+   - `BaseJob` already includes a required `site: SiteKey` field — inherited automatically.
 
 2. **Create crawler** in `src/sites/<site>/<site>-crawler.ts`:
-   - Export `async function crawl<Site>(): Promise<SiteJob[]>`
+   - Export `async function crawl<Site>(): Promise<Omit<SiteJob, "site">[]>` (jobs WITHOUT a `site` field — `crawl()` stamps it centrally)
    - Use CheerioCrawler (or PlaywrightCrawler for JS-heavy SPAs) from Crawlee
    - Max 20 requests total
    - For sites requiring detail page visits (like Indeed), use two-stage crawl
-   - **Stamp `site: "<site>"` on every job object** where the crawler builds it (each crawler is responsible for populating this field — it's not added centrally). The `<site>` literal must match the key used in `main.ts`'s `sites` object and in `goldenDatasetsBySite`.
+   - **Do NOT stamp a `site` field** — `src/pipeline/crawl.ts` derives it from `SiteConfig.key`. The pushed object uses `satisfies Omit<SiteJob, "site">`.
    - **Write to a per-site named dataset** (`Dataset.open("<site>")`), `drop()` it at the start of every run (named datasets are NOT auto-purged), and read results back via `store.getData()`. Do **not** use the default `pushData` and `readdir`/`JSON.parse` on `storage/datasets/default` — in a multi-site run all crawlers share one process, so the default dataset collides and every crawler reads back a contaminated mix of all sites' jobs. See `src/sites/README.md` → "Dataset convention".
 
 3. **Create SiteConfig** in `src/sites/<site>/index.ts`:
    ```ts
-   import { siteKeySchema } from "../../evals/combined-golden-dataset.js";
-
    const jobSchema = z.object({
-     site: siteKeySchema,   // validates the GoldenSiteKey union
      jobTitle: z.string(),
-     // ...other BaseJob + site-specific fields
-   }) satisfies z.ZodType<SiteJob>;
+     // ...other BaseJob + site-specific fields (NO `site` field — stamped centrally)
+   }) satisfies z.ZodType<Omit<SiteJob, "site">>;
 
    export const siteConfig: SiteConfig<SiteJob> = {
-     name: "site",
+     key: "site",   // MUST equal the registry slot below (convention — see registry.ts)
      crawl: crawlSite,
      jobSchema,
    };
    ```
-   - Use `siteKeySchema` (not `z.string()`) for the `site` field so the Zod output type matches `GoldenSiteKey`.
+   - Define `jobSchema` over the non-`site` fields only. There is no `siteKeySchema` to import — that was removed when `site` became centrally stamped.
    - Do **not** create any per-site prompt files — both the filter prompt and the job-summary prompt are shared site-wide at `src/pipeline/prompts/`.
 
 4. **Register site** in `src/sites/registry.ts`:
    - Import the site config
-   - Add to the `sites` object (single source of truth — this makes it available to `pnpm start all` and comma-lists automatically, AND to `pnpm crawl <site>` for crawl-only testing)
+   - Add to the `sites` object keyed by the **same** string as `SiteConfig.key` (convention, documented in `registry.ts` — `crawl.ts` stamps every job's `site` from `key`, so a mismatch mislabels all jobs and surfaces immediately in reports). This single registration makes the site available to `pnpm start all` and comma-lists automatically, AND to `pnpm crawl <site>` for crawl-only testing. `SiteKey` widens to include the new key automatically (`keyof typeof sites`).
    - Site is selected via the first positional CLI arg (`pnpm start <site>`, `pnpm start all`, or `pnpm start site1,site2`). To test the crawler in isolation while developing it, use `pnpm crawl <site>` — it dumps raw jobs to `reports/crawl-<site>-<ts>.json` and skips the LLM filter/summary/reporters.
 
 5. **Update exports** in `src/types/index.ts`:
-   - Export the new site type
+   - Export the new site type (`SiteKey` is already re-exported there and widens automatically)
 
-6. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`). Each golden job object must include `site: "<site>"` as a literal.
+6. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`). Each golden job object must include `site: "<site>"` as a literal. **A site works in production without this step** — the golden dataset only gates eval benchmarking (`GoldenSiteKey` widens to include the new key automatically once registered).
 
 7. **Update documentation**:
    - `README.md` — Add site to quick start and pipeline description
@@ -191,7 +194,7 @@ src/
     IndeedJob.ts                   — Extends BaseJob with company, location
     JoobleJob.ts                   — Extends BaseJob (no extra fields)
     evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type, shared jobEvaluationSchema (status, reason, experienceLevel?, skills?)
-    site-config.ts                 — SiteConfig<T> interface (name, crawl, jobSchema only — prompts and schema are shared site-wide)
+    site-config.ts                 — SiteConfig<T> interface (key: SiteKey, crawl → Omit<T,"site">[], jobSchema validates non-site fields)
     GoldenEntry.ts                 — GoldenEntry<T> interface (job, expectedStatus, expectedReasonKeywords) for eval golden dataset
     index.ts                       — Re-exports all types
     WorkableJob.ts                 — Extends BaseJob (Workable-specific shape; currently no extra fields)
@@ -219,12 +222,12 @@ src/
     fixtures/
       sample-evaluated-jobs.ts     — 6 sample EvaluatedJob<WuzzufJob> for testing reporters
   evals/
-    combined-golden-dataset.ts     — goldenDatasetsBySite registry, GoldenSiteKey, siteKeySchema (Zod enum for BaseJob.site), getGoldenDataset(site?) for eval/compare (combined by default, single-site via --site)
+    combined-golden-dataset.ts     — goldenDatasetsBySite registry, GoldenSiteKey (eval subset of SiteKey), getGoldenDataset(site?) for eval/compare (combined by default, single-site via --site)
     golden.ts                      — Golden dataset comparison engine (precision/recall/F1 per class)
     structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)
     report-writer.ts               — Writes eval/compare results to eval-results/ directory
   sites/
-    registry.ts                    — Single source of truth for the `sites` map (SiteKey → SiteConfig); imported by main.ts and crawl-dev.ts. Register new sites here.
+    registry.ts                    — Single source of truth for the `sites` map + `SiteKey` type (derived via `keyof typeof sites`). Imported by main.ts, crawl-dev.ts, and type-only by base.ts/site-config.ts. Register new sites here. Each config's `key` must match its slot (convention — central stamping in crawl.ts makes a mismatch obvious in reports).
     wuzzuf/
       index.ts                     — SiteConfig for Wuzzuf
       wuzzuf-crawler.ts            — Cheerio crawler, 4 search URLs, max 20 requests
@@ -243,6 +246,10 @@ src/
       index.ts                     — SiteConfig for Jooble
       jooble-crawler.ts            — Playwright crawler, max 20 requests
       evals/jooble-golden-dataset.ts — Hand-labeled jobs for Jooble (currently empty)
+    linkedin/
+      index.ts                     — SiteConfig for LinkedIn (uses BaseJob directly — no site-specific fields)
+      linkedin-crawler.ts          — Cheerio crawler, seed page enqueues detail pages, max 30 requests
+  helpers/
   helpers/
     extractTextWithLineBreaks.ts   — HTML → text with preserved line breaks
   state/
@@ -320,7 +327,8 @@ Each accomplishment should follow this pattern:
 - **Golden dataset job matching is by URL** — synthetic/test jobs must use unique fake URLs
 - **Wuzzuf golden jobs are numbered #1–#40 in comments** — keep numbering in sync when adding/removing jobs
 - **Combined dataset is widened to `GoldenEntry<BaseJob>`** — per-site files preserve their concrete type (`GoldenEntry<WuzzufJob>` etc.) but the `goldenDatasetsBySite` registry widens to the base type so `getGoldenDataset()` returns `GoldenEntry[]`
-- **Every job carries `site: GoldenSiteKey`** — a required field on `BaseJob`. Each crawler stamps it (e.g. `site: "wuzzuf"` where it builds job objects); golden datasets declare it as a literal. Use `siteKeySchema` (from `src/evals/combined-golden-dataset.ts`) — not `z.string()` — in per-site `jobSchema`s so the Zod output type matches the `GoldenSiteKey` union.
+- **Every job carries `site: SiteKey`** — a required field on `BaseJob`, typed as `SiteKey` (derived from the production `sites` registry in `src/sites/registry.ts`). Crawlers do **not** stamp it — they return `Omit<T, "site">[]` and `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key`. Golden datasets still declare `site` as a literal. There is no `siteKeySchema` anymore (removed when `site` became centrally stamped); per-site `jobSchema`s validate only the non-`site` fields.
+- **`GoldenSiteKey` is the eval subset of `SiteKey`** — defined in `src/evals/combined-golden-dataset.ts` as `Extract<SiteKey, keyof typeof goldenDatasetsBySite>`. It covers only sites with a golden dataset. The dependency is **production → eval** (`BaseJob.site: SiteKey`, `GoldenSiteKey` narrows it); never invert it by importing from `src/evals/` into `src/types/` or `src/sites/`. A site can be crawled/filtered without a golden dataset (e.g. `linkedin`); it just can't be `--site`-benchmarked until one ships.
 - **`ReportContext.site` was replaced by `siteName: string`** — reporters no longer receive a full `SiteConfig` (there's no single config for an `all` run). For per-job origin read `job.site`; for the run label use `ctx.siteName`. Failed sites in a multi-site run surface via `ctx.skippedSites`; jobs the LLM dropped surface via `ctx.droppedJobs`.
 - **Dropped jobs are non-fatal and surfaced in the report** — when the LLM omits some input URLs from its filter output, `mergeJobsByUrl` no longer throws (even in strict mode); it collects the dropped jobs and threads them to `ReportContext.droppedJobs`, which reporters render as a "Dropped by LLM" section. Only unknown/hallucinated and duplicate URLs still throw in strict mode.
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl

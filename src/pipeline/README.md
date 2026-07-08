@@ -10,7 +10,7 @@ The pipeline processes job listings through 4 sequential stages, each defined in
 crawl<T extends BaseJob>(config: SiteConfig<T>): Promise<T[]>
 ```
 
-Generic crawl orchestration. Delegates to the site's `crawl` function from `SiteConfig` and logs progress. Each crawler is responsible for stamping its jobs' `site` field (the field is required on `BaseJob`). Returns the raw job data with `site` populated.
+Generic crawl orchestration. Delegates to the site's `crawl` function from `SiteConfig` (which returns jobs **without** a `site` field), then stamps each job's `site` centrally from `SiteConfig.key`. Returns the raw job data with `site` populated.
 
 ### 2. `evaluate.ts`
 

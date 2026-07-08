@@ -35,7 +35,7 @@ Base interface for all job listings:
 | `location` | `string` | Job location |
 | `date` | `string` | Posting date (relative string, e.g. "posted 2 days ago") |
 | `jobDetails` | `string[]` | Array of job description lines |
-| `site` | `GoldenSiteKey` | Origin site key (`'wuzzuf' \| 'indeed' \| 'workable' \| 'jooble'`). Stamped by each crawler for production jobs; declared as a literal in golden datasets. Lets a multi-site run merge jobs while preserving each job's origin. |
+| `site` | `SiteKey` | Origin site key, derived from the production `sites` registry (`'wuzzuf' \| 'indeed' \| 'workable' \| 'jooble' \| 'linkedin'`). Stamped centrally by `crawl()` from `SiteConfig.key` for production jobs; declared as a literal in golden datasets. Lets a multi-site run merge jobs while preserving each job's origin. |
 
 ### `WuzzufJob` (`WuzzufJob.ts`)
 
@@ -62,9 +62,11 @@ Generic site configuration. The filter prompt and LLM-output schema are intentio
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Display name |
-| `crawl` | `() => Promise<T[]>` | Crawling function |
-| `jobSchema` | `ZodType<T>` | Zod schema for an individual job structure |
+| `key` | `SiteKey` | Registry key that also serves as the display name in logs/reports (e.g. `"wuzzuf"`) |
+| `crawl` | `() => Promise<Omit<T, "site">[]>` | Crawling function — returns jobs **without** a `site` field |
+| `jobSchema` | `ZodType<Omit<T, "site">>` | Zod schema for a single raw job's non-`site` fields |
+
+The `site` field is **not** part of `SiteConfig` — crawlers return jobs without it, and `src/pipeline/crawl.ts` stamps it centrally from `key`. This means every job's origin is derived from its registry slot, so a site can be crawled without needing a golden dataset first.
 
 ### `JobStatus` / `EvaluatedJob<T>` / `jobEvaluationSchema` (`evaluated-job.ts`)
 

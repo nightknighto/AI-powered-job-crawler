@@ -8,7 +8,7 @@ chromium.use(stealthPlugin());
 
 const START_URL = 'https://www.linkedin.com/jobs/search/?distance=25&f_E=2%2C3%2C4&f_TPR=r604800&f_WT=2%2C3&geoId=106155005&keywords=%28React%20OR%20Node.js%20OR%20TypeScript%29%20AND%20%28NOT%20senior%29&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&spellCorrectionEnabled=true'
 
-export async function crawlLinkedIn(): Promise<BaseJob[]> {
+export async function crawlLinkedIn(): Promise<Omit<BaseJob, "site">[]> {
     // Named dataset, dropped each run so multi-site runs don't collide on `default`.
     const dataset = await Dataset.open("linkedin");
     await dataset.drop();
@@ -46,7 +46,6 @@ export async function crawlLinkedIn(): Promise<BaseJob[]> {
 
                 const jobDescription = extractTextWithLineBreaks($, $('.show-more-less-html__markup'));
                 await store.pushData({
-                    site: "linkedin" as any,
                     jobTitle: $('.topcard__title').text(),
                     jobURL: normalizeURL(request.url),
                     company: extractTextWithLineBreaks($, $('.topcard__org-name-link')),
@@ -55,7 +54,7 @@ export async function crawlLinkedIn(): Promise<BaseJob[]> {
                     jobDetails: [
                         jobDescription,
                     ],
-                } satisfies BaseJob);
+                } satisfies Omit<BaseJob, "site">);
             }
         },
         maxRequestsPerCrawl: 30,
@@ -64,7 +63,7 @@ export async function crawlLinkedIn(): Promise<BaseJob[]> {
     await crawler.run([START_URL]);
 
     const { items } = await store.getData();
-    return items as BaseJob[];
+    return items as Omit<BaseJob, "site">[];
 }
 
 /** Normalizes a URL by removing query parameters and fragment identifiers. */

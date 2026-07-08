@@ -44,9 +44,9 @@ if (arg === "all") {
 }
 
 // Derive a filesystem-safe report label from the resolved site names: `all`, `wuzzuf`, or `wuzzuf-indeed`.
-const reportName = selectedSites.map((s) => s.name).join("-");
+const reportName = selectedSites.map((s) => s.key).join("-");
 
-console.log(`Using site(s): ${selectedSites.map((s) => s.name).join(", ")}`);
+console.log(`Using site(s): ${selectedSites.map((s) => s.key).join(", ")}`);
 
 const model = modelConfigs.qwenReason;
 
@@ -103,15 +103,15 @@ for (const site of selectedSites) {
 
         // Stage 5: Merge fresh + cached verdicts, accumulate dropped jobs.
         evaluatedAll.push(...newlyEvaluated, ...cachedEvaluated);
-        droppedAll.push(...dropped.map((d) => ({ site: site.name, ...d })));
+        droppedAll.push(...dropped.map((d) => ({ site: site.key, ...d })));
 
         // Stage 6: Record new verdicts in the in-memory cache (persisted once after all sites).
         // Dropped jobs are intentionally NOT recorded — they are re-evaluated next run.
         for (const ev of newlyEvaluated) cache.set(ev);
     } catch (e: unknown) {
         const reason = e instanceof Error ? e.message : String(e);
-        console.warn(`⚠️  Site ${site.name} failed (${reason}). Skipping.`);
-        skipped.push({ site: site.name, reason });
+        console.warn(`⚠️  Site ${site.key} failed (${reason}). Skipping.`);
+        skipped.push({ site: site.key, reason });
     }
 }
 

@@ -32,7 +32,7 @@ pnpm crawl wuzzuf        # CRAWL ONLY — dumps raw jobs to reports/, skips the 
 pnpm crawl wuzzuf --verbose  # same, but also prints the full JSON of the first 10 jobs per site.
 ```
 
-**Available sites:** `wuzzuf`, `indeed`, `workable`, `jooble`
+**Available sites:** `wuzzuf`, `indeed`, `workable`, `jooble`, `linkedin`
 
 ## Architecture
 

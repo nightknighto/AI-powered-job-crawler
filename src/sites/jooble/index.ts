@@ -2,20 +2,18 @@ import { z } from "zod";
 import { SiteConfig } from "../../types/site-config.js";
 import { crawlJooble } from "./jooble-crawler.js";
 import { JoobleJob } from "../../types/JoobleJob.js";
-import { siteKeySchema } from "../../evals/combined-golden-dataset.js";
 
 const jobSchema = z.object({
-    site: siteKeySchema,
     jobTitle: z.string(),
     jobURL: z.string(),
     company: z.string(),
     location: z.string(),
     date: z.string(),
     jobDetails: z.array(z.string()),
-}) satisfies z.ZodType<JoobleJob>;
+}) satisfies z.ZodType<Omit<JoobleJob, "site">>;
 
 export const joobleConfig: SiteConfig<JoobleJob> = {
-    name: "jooble",
+    key: "jooble",
     crawl: crawlJooble,
     jobSchema,
 };

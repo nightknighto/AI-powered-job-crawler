@@ -17,7 +17,7 @@ export interface CachedVerdict {
     skills?: string[];
     /** ISO timestamp of the run that first evaluated this URL. Used for pruning + debugging. */
     firstSeenAt: string;
-    /** Origin site key (GoldenSiteKey value). For debugging/pruning only — not a lookup key. */
+    /** Origin site key (SiteKey value). For debugging/pruning only — not a lookup key. */
     site: string;
 }
 

@@ -9,7 +9,7 @@ const START_URLS = [
     'https://wuzzuf.net/search/jobs?q=typescript&filters%5Bworkplace_arrangement%5D%5B0%5D=hybrid&filters%5Bworkplace_arrangement%5D%5B1%5D=remote&filters%5Bpost_date%5D%5B0%5D=within_1_week&filters%5Broles%5D%5B0%5D=IT%2FSoftware%20Development&a=navbg%7Cspbg',
 ];
 
-export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
+export async function crawlWuzzuf(): Promise<Omit<WuzzufJob, "site">[]> {
     // Named datasets aren't auto-purged like the default one, so each crawler clears its own
     // dataset at the start of every run. This also keeps multi-site runs correct: without it,
     // every site's pushData would collide in `storage/datasets/default` (one process, one shared
@@ -37,7 +37,6 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
                 const company = extractTextWithLineBreaks($, $('div.css-9iujih').first()).replace(' -', ''); // Get company name (first line before any location info)
 
                 await store.pushData({
-                    site: "wuzzuf",
                     jobTitle: $('h1.css-gkdl1m').text(),
                     jobURL: request.url,
                     company: company === '-' ? 'Confidential' : company, // Handle cases where company is hidden
@@ -45,7 +44,7 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
                     date: $('span.css-154erwh').text(),
                     jobDetails: jobDetails.map((_i, job) => extractTextWithLineBreaks($, $(job))).get(),
                     tags: $('.css-5kov97 a').map((_i, tag) => extractTextWithLineBreaks($, $(tag))).get().join(", "),
-                } satisfies WuzzufJob);
+                } satisfies Omit<WuzzufJob, "site">);
             }
         },
         maxRequestsPerCrawl: 20,
@@ -54,5 +53,5 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
     await crawler.run(START_URLS);
 
     const { items } = await store.getData();
-    return items as WuzzufJob[];
+    return items as Omit<WuzzufJob, "site">[];
 }

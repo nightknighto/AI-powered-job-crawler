@@ -4,7 +4,7 @@ import { extractTextWithLineBreaks } from "../../helpers/extractTextWithLineBrea
 
 const START_URL = 'https://eg.indeed.com/jobs?q=react%2C+node%2C+typescript&l=Cairo&fromage=3&from=searchOnDesktopSerp&vjk=298dd0a9993ccb9b';
 
-export async function crawlIndeed(): Promise<IndeedJob[]> {
+export async function crawlIndeed(): Promise<Omit<IndeedJob, "site">[]> {
     // Named dataset, dropped each run so multi-site runs don't collide on `default`.
     const dataset = await Dataset.open("indeed");
     await dataset.drop();
@@ -48,14 +48,13 @@ export async function crawlIndeed(): Promise<IndeedJob[]> {
                 const jobDescription = $('#jobDescriptionText').text()
 
                 await store.pushData({
-                    site: "indeed",
                     jobTitle: jobTitle || 'N/A',
                     jobURL: request.url,
                     company: company.trim() || 'N/A',
                     location: location.trim() || 'N/A',
                     date: 'N/A',
                     jobDetails: jobDescription ? [jobDescription] : ['N/A'],
-                } satisfies IndeedJob);
+                } satisfies Omit<IndeedJob, "site">);
             }
         },
         maxRequestsPerCrawl: 20,
@@ -64,5 +63,5 @@ export async function crawlIndeed(): Promise<IndeedJob[]> {
     await crawler.run([START_URL]);
 
     const { items } = await store.getData();
-    return items as IndeedJob[];
+    return items as Omit<IndeedJob, "site">[];
 }

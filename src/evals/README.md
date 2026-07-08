@@ -60,7 +60,7 @@ Writes eval results to the `eval-results/` directory as markdown files:
 | Command | Description |
 |---------|-------------|
 | `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset (default). Pass `--print-failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
-| `pnpm eval <model> --site <name>` | Scope the eval to one site's golden dataset (`wuzzuf` \| `indeed` \| `workable`). The report filename and header reflect the selected site. |
+| `pnpm eval <model> --site <name>` | Scope the eval to one site's golden dataset (`wuzzuf` \| `indeed` \| `workable`). The report filename and header reflect the selected site. Only sites with a golden dataset are accepted — production-only sites (e.g. `linkedin`) are rejected. |
 | `pnpm compare` | Run eval for all configured models, print ranked comparison table sorted by PASS F1. |
 | `pnpm compare --site <name>` | Same, scoped to one site's golden dataset. |
 
@@ -96,7 +96,9 @@ This unified approach means:
 
 ## Golden Dataset
 
-Aggregated by [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts). The per-site datasets are registered in the `goldenDatasetsBySite` map; `getGoldenDataset(site?)` returns either the combined dataset (default) or a single site's dataset (for `--site <name>`):
+Aggregated by [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts). The per-site datasets are registered in the `goldenDatasetsBySite` map; `getGoldenDataset(site?)` returns either the combined dataset (default) or a single site's dataset (for `--site <name>`).
+
+`GoldenSiteKey` is the **eval subset** of the production `SiteKey` union (defined in `src/sites/registry.ts`) — it covers only the sites that have a golden dataset (`'wuzzuf' | 'indeed' | 'workable' | 'jooble'`), so a production-only site like `linkedin` is crawled but not eval-benchmarked until it ships a golden dataset. The `--site` flag validates against `goldenDatasetsBySite`, not the production registry.
 
 | File | Jobs | Source |
 |------|------|--------|

@@ -22,7 +22,7 @@ const newJobUrls = new Set([
 ]);
 
 const mockContext: ReportContext = {
-    siteName: wuzzufConfig.name,
+    siteName: wuzzufConfig.key,
     model: "preview-model",
     timestamp: new Date(),
     outputFiles: [],

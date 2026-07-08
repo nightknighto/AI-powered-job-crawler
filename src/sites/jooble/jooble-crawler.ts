@@ -7,7 +7,7 @@ chromium.use(stealthPlugin());
 
 const START_URL = 'https://eg.jooble.org/SearchResult?date=3&loc=6&rgns=Cairo&ukw=javascript%20typescript%20react%20node.js'
 
-export async function crawlJooble(): Promise<JoobleJob[]> {
+export async function crawlJooble(): Promise<Omit<JoobleJob, "site">[]> {
     // Named dataset, dropped each run so multi-site runs don't collide on `default`.
     const dataset = await Dataset.open("jooble");
     await dataset.drop();
@@ -34,7 +34,6 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
                 });
             } else {
                 await store.pushData({
-                    site: "jooble",
                     jobTitle: await page.locator('[data-test-name="_jdpHeaderBlock"] h1').textContent() || 'N/A',
                     jobURL: request.url,
                     company: await page.locator('div[style*="translate3d(0%"] [data-test-name="_companyName"]').textContent() || 'N/A',
@@ -43,7 +42,7 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
                     jobDetails: [
                         await page.locator('div[style*="translate3d(0%"] [data-test-name="_jobDescriptionBlock"]').innerText() || 'N/A',
                     ],
-                } satisfies JoobleJob);
+                } satisfies Omit<JoobleJob, "site">);
             }
         },
 
@@ -60,5 +59,5 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
     await crawler.run([START_URL]);
 
     const { items } = await store.getData();
-    return items as JoobleJob[];
+    return items as Omit<JoobleJob, "site">[];
 }

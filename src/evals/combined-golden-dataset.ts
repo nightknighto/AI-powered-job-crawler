@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { SiteKey } from "../sites/registry.js";
 import { indeedGoldenDataset } from "../sites/indeed/evals/indeed-golden-dataset.js";
 import { joobleGoldenDataset } from "../sites/jooble/evals/jooble-golden-dataset.js";
 import { workableGoldenDataset } from "../sites/workable/evals/workable-golden-dataset.js";
@@ -25,12 +25,10 @@ export const goldenDatasetsBySite = {
     jooble: joobleGoldenDataset,
 } as const satisfies Record<string, GoldenEntry[]>;
 
-/** Union of all site keys that have a golden dataset (e.g. `'wuzzuf' | 'indeed' | 'workable' | 'jooble'`). */
-export type GoldenSiteKey = keyof typeof goldenDatasetsBySite;
-
-/** Zod schema validating a `site` field against the registered site keys.
- * Kept in sync with {@link GoldenSiteKey} by deriving from `goldenDatasetsBySite`'s keys. */
-export const siteKeySchema = z.enum(Object.keys(goldenDatasetsBySite) as [GoldenSiteKey, ...GoldenSiteKey[]]);
+/** Subset of {@link SiteKey} restricted to sites that have a golden dataset (e.g.
+ *  `'wuzzuf' | 'indeed' | 'workable' | 'jooble'`). Production sites without a golden dataset
+ *  (like `linkedin`) are excluded — they can be crawled but not eval-benchmarked. */
+export type GoldenSiteKey = Extract<SiteKey, keyof typeof goldenDatasetsBySite>;
 
 /**
  * Resolve the golden dataset for a benchmark run.
