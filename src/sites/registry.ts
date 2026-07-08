@@ -4,6 +4,7 @@ import { wuzzufConfig } from "./wuzzuf/index.js";
 import { indeedConfig } from "./indeed/index.js";
 import { workableConfig } from "./workable/index.js";
 import { joobleConfig } from "./jooble/index.js";
+import { linkedInConfig } from "./linkedin/index.js";
 
 /** Registry of all available sites, keyed by their CLI identifier.
  *
@@ -15,6 +16,7 @@ export const sites = {
     indeed: indeedConfig,
     workable: workableConfig,
     jooble: joobleConfig,
+    linkedin: linkedInConfig,
 } as const satisfies Record<string, SiteConfig<BaseJob>>;
 
 /** CLI identifier for a registered site (e.g. `"wuzzuf"`, `"indeed"`). */

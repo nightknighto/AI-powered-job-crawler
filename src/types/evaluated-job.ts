@@ -23,7 +23,10 @@ export interface EvaluatedJob<T> {
 /** Shared Zod schema for LLM filter output � used across all sites. */
 export const jobEvaluationSchema = z.object({
     jobURL: z.string(),
-    reason: z.array(z.string()),
+    reason: z.preprocess(
+        (val) => typeof val === "string" ? [val] : val,
+        z.array(z.string())
+    ),
     experienceLevel: z.string(),
     skills: z.array(z.string()),
     status: JobStatus,
