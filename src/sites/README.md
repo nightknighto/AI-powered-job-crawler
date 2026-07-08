@@ -63,7 +63,11 @@ interface SiteConfig<T extends BaseJob> {
 2. Create `<site-name>-crawler.ts` with a crawl function using `CheerioCrawler` (or `PlaywrightCrawler` for JS-heavy SPAs, like Workable)
 3. Create `index.ts` exporting a `SiteConfig<YourJobType>` (define `YourJobType` in `src/types/`). Do **not** create any per-site prompt files — both the filter and job-summary prompts are shared site-wide at `src/pipeline/prompts/`.
 4. *(Optional but recommended)* Create `evals/<site-name>-golden-dataset.ts` with hand-labeled test jobs, then register it in `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts` so `pnpm eval` and `pnpm compare` pick it up (both the combined run and the `--site <name>` filter)
-5. Import and register the new site config in `main.ts`
+5. Import and register the new site config in `src/sites/registry.ts` (the shared `sites` map). This single registration makes the site available to both `pnpm start <site>` (full pipeline) and `pnpm crawl <site>` (crawl-only dev tool).
+
+## Testing a crawler in isolation
+
+While developing a crawler, use `pnpm crawl <site>` (→ `tsx src/crawl-dev.ts`) to run **only** the crawler and dump the raw jobs to `reports/crawl-<site>-<timestamp>.json`, skipping the LLM filter, summary, and reporters. It accepts the same `all` / comma-list args as `pnpm start`. The script prints a quick summary (count + first ~10 titles) to the terminal and writes the full pretty-printed JSON for inspection. Pass `--verbose` (e.g. `pnpm crawl wuzzuf --verbose`) to print the full JSON of those first 10 jobs instead of just their titles — handy for inspecting extraction output. This is the fast inner loop for iterating on extraction selectors.
 
 ## Prompt Convention
 

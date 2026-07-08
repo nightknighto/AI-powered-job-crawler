@@ -28,7 +28,7 @@ interface SiteConfig<T extends BaseJob> {
 }
 ```
 
-Sites only describe **crawling** and the **raw job shape** — to add a site, implement this interface and register it in `main.ts`.
+Sites only describe **crawling** and the **raw job shape** — to add a site, implement this interface and register it in `src/sites/registry.ts`.
 
 > The **filter prompt**, the **job-summary prompt**, and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`filterPrompt`, `jobSummaryPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering and summarizing behave identically across all sites.
 
@@ -124,10 +124,10 @@ To add a new job board site:
    - Use `siteKeySchema` (not `z.string()`) for the `site` field so the Zod output type matches `GoldenSiteKey`.
    - Do **not** create any per-site prompt files — both the filter prompt and the job-summary prompt are shared site-wide at `src/pipeline/prompts/`.
 
-4. **Register site** in `src/main.ts`:
+4. **Register site** in `src/sites/registry.ts`:
    - Import the site config
-   - Add to `sites` object (this also makes it available to `pnpm start all` and comma-lists automatically)
-   - Site is selected via the first positional CLI arg (`pnpm start <site>`, `pnpm start all`, or `pnpm start site1,site2`)
+   - Add to the `sites` object (single source of truth — this makes it available to `pnpm start all` and comma-lists automatically, AND to `pnpm crawl <site>` for crawl-only testing)
+   - Site is selected via the first positional CLI arg (`pnpm start <site>`, `pnpm start all`, or `pnpm start site1,site2`). To test the crawler in isolation while developing it, use `pnpm crawl <site>` — it dumps raw jobs to `reports/crawl-<site>-<ts>.json` and skips the LLM filter/summary/reporters.
 
 5. **Update exports** in `src/types/index.ts`:
    - Export the new site type
@@ -145,6 +145,7 @@ To add a new job board site:
 ```
 src/
   main.ts                          — Entry point, orchestrates the full pipeline; first positional arg selects one site, `all`, or a comma-list (e.g. wuzzuf,indeed)
+  crawl-dev.ts                     — Crawl-only dev tool (`pnpm crawl <site> [--verbose]`): runs ONLY the crawler and dumps raw jobs to reports/crawl-<site>-<ts>.json, skipping the LLM filter/summary/reporters. `--verbose` prints the full JSON of the first 10 jobs per site. Used when iterating on a crawler's extraction logic.
   config.ts                        — ModelConfig interface, modelConfigs map, shared settings
   eval.ts                          — Single-model golden dataset evaluation runner
   compare-models.ts                — Multi-model benchmark, ranks by PASS F1
@@ -188,6 +189,7 @@ src/
     structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)
     report-writer.ts               — Writes eval/compare results to eval-results/ directory
   sites/
+    registry.ts                    — Single source of truth for the `sites` map (SiteKey → SiteConfig); imported by main.ts and crawl-dev.ts. Register new sites here.
     wuzzuf/
       index.ts                     — SiteConfig for Wuzzuf
       wuzzuf-crawler.ts            — Cheerio crawler, 4 search URLs, max 20 requests

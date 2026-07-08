@@ -1,23 +1,12 @@
-import { wuzzufConfig } from "./sites/wuzzuf/index.js";
-import { indeedConfig } from "./sites/indeed/index.js";
+import { sites } from "./sites/registry.js";
 import { crawl } from "./pipeline/crawl.js";
 import { evaluate } from "./pipeline/evaluate.js";
 import { generateSummary } from "./pipeline/generate-summary.js";
 import { createReporters } from "./reporters/index.js";
 import { modelConfigs, shared } from "./config.js";
-import { workableConfig } from "./sites/workable/index.js";
-import { joobleConfig } from "./sites/jooble/index.js";
 import { BaseJob } from "./types/base.js";
 import { EvaluatedJob } from "./types/evaluated-job.js";
 import { SiteConfig } from "./types/site-config.js";
-
-// Registry of all available sites, keyed by their CLI identifier.
-const sites = {
-    wuzzuf: wuzzufConfig,
-    indeed: indeedConfig,
-    workable: workableConfig,
-    jooble: joobleConfig,
-} as const satisfies Record<string, SiteConfig<BaseJob>>;
 
 const arg = process.argv[2];
 

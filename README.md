@@ -17,6 +17,10 @@ pnpm start wuzzuf        # crawl → evaluate → summarize → display (single 
 pnpm start indeed        # ...or any other single site
 pnpm start all           # run every site, merge into ONE unified report
 pnpm start wuzzuf,indeed # run a subset of sites, merged into one report
+
+pnpm crawl wuzzuf        # CRAWL ONLY — dumps raw jobs to reports/, skips the LLM filter/summary/reporters.
+                         # Use this when iterating on a crawler's extraction logic.
+pnpm crawl wuzzuf --verbose  # same, but also prints the full JSON of the first 10 jobs per site.
 ```
 
 **Available sites:** `wuzzuf`, `indeed`, `workable`, `jooble`
@@ -114,6 +118,7 @@ export const shared = {
 | Script | Command | Description |
 |--------|---------|-------------|
 | `pnpm start <site>` | `tsx src/main.ts <site>` | Full pipeline for one site. Also accepts `all` (every site, unified report) or a comma-list like `wuzzuf,indeed`. |
+| `pnpm crawl <site>` | `tsx src/crawl-dev.ts <site>` | **Crawl-only dev tool.** Runs ONLY the crawler and dumps raw jobs to `reports/crawl-<site>-<ts>.json`, skipping the LLM filter/summary/reporters. Accepts the same `all` / comma-list args as `pnpm start`. Add `--verbose` to print the full JSON of the first 10 jobs per site. Use when iterating on a crawler. |
 | `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model. Add `--site <name>` to scope to one site |
 | `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1. Add `--site <name>` to scope to one site |
 | `pnpm compare-prompts <model>` | `tsx src/compare-prompts.ts` | Compare prompt variants for a model. Add `--variants v1,v2` and/or `--site <name>`. |
