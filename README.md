@@ -18,6 +18,15 @@ pnpm start indeed        # ...or any other single site
 pnpm start all           # run every site, merge into ONE unified report
 pnpm start wuzzuf,indeed # run a subset of sites, merged into one report
 
+pnpm start wuzzuf --refresh  # IGNORE cached verdicts, re-evaluate ALL crawled jobs, and update the
+                             # verdict cache (preserving firstSeenAt for known URLs). Run this after
+                             # editing the filter prompt (src/pipeline/prompts/filter.md) so cached
+                             # verdicts reflect the new rules.
+
+pnpm start wuzzuf --only-new # Show ONLY jobs newly evaluated or dropped this run in the tables
+                             # (cached jobs are hidden). Count boxes stay total. New jobs are 🆕-badged
+                             # and sorted to the top regardless of this flag.
+
 pnpm crawl wuzzuf        # CRAWL ONLY — dumps raw jobs to reports/, skips the LLM filter/summary/reporters.
                          # Use this when iterating on a crawler's extraction logic.
 pnpm crawl wuzzuf --verbose  # same, but also prints the full JSON of the first 10 jobs per site.
@@ -69,6 +78,19 @@ flowchart LR
 **Single-site runs** (`pnpm start wuzzuf`) take an unchanged flat path. **Multi-site runs** (`all` or a comma-list) loop per site with skip-and-continue: if one site's crawl or filter call fails, the others still produce a unified report (with a "Skipped" note listing the failed site and reason). Output files are namespaced by site label: `reports/all-<timestamp>.html`, `reports/wuzzuf-indeed-<timestamp>.html`.
 
 See [`src/pipeline/README.md`](src/pipeline/README.md) for pipeline details, [`src/reporters/README.md`](src/reporters/README.md) for reporter details, and [`src/sites/README.md`](src/sites/README.md) for site-specific implementation details.
+
+### Verdict cache
+
+Daily runs persist LLM filter verdicts (`jobURL → verdict`) to `state/verdict-cache.json`
+(gitignored). On each run, jobs whose URL already has a stored verdict skip the LLM filter call
+entirely — only genuinely-new postings are evaluated. This keeps daily runs fast and cheap:
+a repeat posting costs zero filter tokens. `--refresh` forces a full re-evaluation (use after
+changing the filter rules). The eval system is unaffected — it never reads or writes the cache.
+
+New jobs are **marked** in the report: each job evaluated or dropped this run gets a 🆕 badge
+and sorts to the top of its group, and the HTML report adds a "New" count box. `--only-new`
+hides cached jobs from the tables so you see only today's discoveries (count boxes stay total).
+The first run (cache empty) and `--refresh` badge every job, since all are newly evaluated.
 
 ## Evaluation System
 
@@ -139,8 +161,10 @@ src/
   evals/               — Golden dataset engine, structural heuristics, report writer
   sites/wuzzuf/        — Wuzzuf site config, crawler, prompts, eval data
   helpers/             — Utility functions
+  state/               — Persistent verdict cache (production pipeline)
 eval-results/          — Generated eval/compare reports (gitignored)
 reports/               — Generated HTML/markdown reports (gitignored)
+state/                 — Verdict cache store (gitignored, auto-generated)
 storage/               — Crawlee internal state (gitignored, auto-generated)
 ```
 

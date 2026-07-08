@@ -19,6 +19,12 @@ export interface ReportContext {
     skippedSites?: { site: string; reason: string }[];
     /** Jobs the LLM dropped from its filter output (input jobs with no verdict). Omitted when none. */
     droppedJobs?: { site: string; jobURL: string; jobTitle: string }[];
+    /** URLs of jobs newly evaluated or dropped this run (cached jobs are absent).
+     * Drives the 🆕 badge and new-to-top sort. Omitted on the eval/preview paths
+     * (no cache → no newness distinction). */
+    newJobUrls?: Set<string>;
+    /** When true, job tables show only new jobs; count boxes stay total. Set by `--only-new`. */
+    onlyNew?: boolean;
 }
 
 /** Interface for all output reporters. Each reporter handles one output format. */

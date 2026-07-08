@@ -24,6 +24,8 @@ Shared context passed to all reporters in a composable run:
 | `outputFiles` | `string[]` | Mutable array — file-writing reporters push paths here for sibling reporters to reference |
 | `skippedSites?` | `{ site, reason }[]` | Sites that failed and were skipped during a multi-site run (omitted when nothing was skipped) |
 | `droppedJobs?` | `{ site, jobURL, jobTitle }[]` | Jobs the LLM dropped from its filter output (input jobs that received no verdict). Omitted when none. Rendered as a "Dropped by LLM" section. |
+| `newJobUrls?` | `Set<string>` | URLs of jobs newly evaluated or dropped this run (cached jobs are absent). Drives the 🆕 badge and new-to-top sort. Omitted on the eval/preview paths (no cache → no newness distinction). |
+| `onlyNew?` | `boolean` | When `true`, job tables show only new jobs; count boxes stay total. Set by `--only-new`. |
 
 ### `ReportOutput` (`types.ts`)
 
@@ -66,6 +68,28 @@ Composable — use multiple reporters:
 ```ts
 reporters: ["html", "cli-summary"]
 ```
+
+## Newness: 🆕 badge, new-to-top sort, `--only-new`
+
+Daily runs overlap up to 7 days of postings, so the report mixes cached (already-seen) and new jobs. Part 2 of the verdict cache feature makes newness **visible**:
+
+- **🆕 badge** — prepended to a job's title when it was newly evaluated or dropped this run. Cached jobs never badge.
+- **New-to-top sort** — new jobs sort to the top of each table/card list (within each group, newest-date-first). Driven by `sortByNewThenDate(jobs, newUrls)` in `report-helpers.ts`; falls back to `sortByDate` when `newUrls` is empty/undefined.
+- **"New" count box** (HTML only) — a 4th blue count box showing how many jobs are new this run. Always shown (informative even at 0).
+- **`--only-new` flag** — hides cached jobs from the tables (passing/failing/dropped show only new jobs). **Count boxes stay total** so you retain awareness of the full set. A "showing N new of M total" hint appears under the counts.
+
+**Invariant:** a job is "new" iff its URL was evaluated or dropped this run. Consequences:
+- First run (cache empty) → every job badges new (technically accurate).
+- `--refresh` (re-evaluates all crawled jobs) → every job badges new.
+- Dropped jobs are new, but are NOT badged in their section (all-new by definition → a badge on every row is noise).
+
+**Carry mechanism:** newness travels via `ctx.newJobUrls: Set<string>` (a URL set), NOT a field on `EvaluatedJob<T>`. This keeps `EvaluatedJob<T>` pure — newness is a reporting concern, not a job property. `main.ts` accumulates the set from `newlyEvaluated` + `dropped`; the eval path never sets it (so eval reports have no badges).
+
+Badge insertion points per reporter:
+- `html.ts` — `tableRow(job, newUrls)` (single method serves both tables); 4th count box in `buildHtml`.
+- `cli-card.ts` — `renderCard(job, passed, newUrls)` (title line).
+- `cli-table.ts` + `markdown.ts` — via the shared `buildReportTables(jobs, newUrls, onlyNew)` → private `tableRow(job, newUrls)` in `report-helpers.ts`.
+- `cli-summary.ts` — the bullet line.
 
 ## Preview Command
 

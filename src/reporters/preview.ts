@@ -3,20 +3,31 @@ import { sampleEvaluatedJobs } from "./fixtures/sample-evaluated-jobs.js";
 import { ReportContext } from "./types.js";
 import { wuzzufConfig } from "../sites/wuzzuf/index.js";
 
-const names = process.argv.slice(2);
+// Reporter names are positional; `--only-new` toggles the only-new view (tables filtered to new).
+const onlyNew = process.argv.includes("--only-new");
+const names = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 
 if (names.length === 0) {
-    console.log("Usage: tsx src/reporters/preview.ts <reporter...>");
+    console.log("Usage: tsx src/reporters/preview.ts <reporter...> [--only-new]");
     console.log(`Available reporters: ${availableReporters.join(", ")}`);
     console.log('\nExample: tsx src/reporters/preview.ts html cli-summary');
+    console.log('         tsx src/reporters/preview.ts html --only-new');
     process.exit(0);
 }
+
+// Mark two sample jobs as "new" so the 🆕 badge and new-to-top sort are previewable.
+const newJobUrls = new Set([
+    "https://wuzzuf.net/jobs/p/senior-react-developer-abc123",
+    "https://wuzzuf.net/jobs/p/frontend-developer-def456",
+]);
 
 const mockContext: ReportContext = {
     siteName: wuzzufConfig.name,
     model: "preview-model",
     timestamp: new Date(),
     outputFiles: [],
+    newJobUrls,
+    onlyNew: onlyNew || undefined,
 };
 
 const reporter = createReporters(names);

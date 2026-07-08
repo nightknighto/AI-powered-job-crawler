@@ -18,7 +18,7 @@ export class MarkdownReporter implements Reporter {
 
         mkdirSync(dir, { recursive: true });
 
-        const tablesMarkdown = buildReportTables(jobs);
+        const tablesMarkdown = buildReportTables(jobs, ctx.newJobUrls, ctx.onlyNew);
         const droppedSection = buildDroppedJobsSection(ctx.droppedJobs);
         const droppedBlock = droppedSection ? `\n\n${droppedSection}` : "";
         const content = `${tablesMarkdown}${droppedBlock}\n\n${summary}`;

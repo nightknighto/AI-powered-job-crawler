@@ -84,6 +84,40 @@ For multi-site runs, crawl → evaluate loop **once per site** (small per-site f
 
 This relies on every job carrying a `site: GoldenSiteKey` field (see `BaseJob`). Crawlers stamp it for production jobs; golden datasets declare it as a literal — so the eval path also carries `site` through (it appears in the prompt JSON as harmless read-only context; the LLM never outputs it, and `mergeJobsByUrl` reattaches the full original job by reference).
 
+### Verdict cache (production only)
+
+Daily runs overlap heavily (crawlers fetch up to 7 days of postings), so re-filtering yesterday's
+jobs wastes LLM tokens. A persistent `VerdictCache` (`src/state/verdict-cache.ts`) stores
+`jobURL → { status, reason, experienceLevel?, skills?, firstSeenAt, site }` in
+`state/verdict-cache.json` (gitignored). The cache stage lives in `main.ts`'s per-site loop:
+
+```ts
+const toEvaluate = refresh ? jobs : jobs.filter((j) => !cache.has(j.jobURL));
+const cachedJobs = refresh ? [] : jobs.filter((j) => cache.has(j.jobURL));
+// evaluate(new only) → reconstruct(cached, fresh body) → merge → cache.set(new) → save once
+```
+
+- **`evaluate.ts` and `run-filter.ts` are cache-unaware.** Caching is a stage in `main.ts`; the
+  shared filter stays pure so the eval path is unaffected.
+- **Dropped jobs are never cached** — they're re-evaluated next run (transient LLM hiccups don't
+  permanently bury a job).
+- **`--refresh`** ignores cache reads, re-evaluates all crawled jobs, and updates the store while
+  **preserving `firstSeenAt`** for known URLs. Run after editing `filter.md`. It does NOT clear the
+  store; un-crawled entries age out via 30-day pruning.
+- **Eval path is cache-free** — `eval.ts`, `compare-models.ts`, `compare-prompts.ts` never
+  construct a `VerdictCache`.
+- **Part 2 makes newness visible in reports.** `main.ts` accumulates a `newJobUrls: Set<string>`
+  of every URL evaluated or dropped this run and passes it via `ReportContext.newJobUrls`. Each
+  reporter prepends a 🆕 badge to a new job's title, sorts new jobs to the top within each group
+  (`sortByNewThenDate` in `report-helpers.ts`), and the HTML reporter adds a 4th blue "New" count
+  box. **Cached jobs never badge.** The `--only-new` flag (`ReportContext.onlyNew`) hides cached
+  jobs from the tables (passing/failing/dropped show only new) while **count boxes stay total**.
+  **Invariant:** a job is "new" iff it was evaluated or dropped this run — so the first run (cache
+  empty) and `--refresh` (re-evaluates all) badge every job. The summary still covers **all**
+  passing jobs (new + cached). The eval path never sets `newJobUrls`/`onlyNew`, so eval reports
+  have no badges. Newness travels via `ctx.newJobUrls`, **not** a field on `EvaluatedJob<T>` — keep
+  that type pure.
+
 ### Site addition pattern
 
 To add a new job board site:
@@ -178,7 +212,7 @@ src/
     cli-table.ts                   — Terminal markdown tables via marked-terminal (original behavior)
     cli-card.ts                    — Stacked card format with full-width fields
     cli-summary.ts                 — Compact counts + passing titles + file paths
-    html.ts                        — Styled HTML with Site column + "Sites:" header + "Skipped" note, auto-open, saved to reports/<siteName>-<ts>.html
+    html.ts                        — Styled HTML with Site column + "Sites:" header + "Skipped" note + 🆕 badge + "New" count box, auto-open, saved to reports/<siteName>-<ts>.html
     markdown.ts                    — .md file output with Site column, saved to reports/<siteName>-<ts>.md
     preview.ts                     — Standalone preview script (pnpm preview-reporter)
     fixtures/
@@ -210,6 +244,9 @@ src/
       evals/jooble-golden-dataset.ts — Hand-labeled jobs for Jooble (currently empty)
   helpers/
     extractTextWithLineBreaks.ts   — HTML → text with preserved line breaks
+  state/
+    verdict-cache.ts               — VerdictCache: persistent jobURL→verdict store (mechanics only); load/has/toEvaluatedJob/set/save; 30-day prune; atomic write. Cache orchestration is a stage in main.ts, not in evaluate.ts
+    README.md                      — Documents the verdict cache module
 ```
 
 ## Documentation — Mandatory for All Feature Work and Design Changes
@@ -286,6 +323,8 @@ Each accomplishment should follow this pattern:
 - **`ReportContext.site` was replaced by `siteName: string`** — reporters no longer receive a full `SiteConfig` (there's no single config for an `all` run). For per-job origin read `job.site`; for the run label use `ctx.siteName`. Failed sites in a multi-site run surface via `ctx.skippedSites`; jobs the LLM dropped surface via `ctx.droppedJobs`.
 - **Dropped jobs are non-fatal and surfaced in the report** — when the LLM omits some input URLs from its filter output, `mergeJobsByUrl` no longer throws (even in strict mode); it collects the dropped jobs and threads them to `ReportContext.droppedJobs`, which reporters render as a "Dropped by LLM" section. Only unknown/hallucinated and duplicate URLs still throw in strict mode.
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl
+- **`state/verdict-cache.json`** is the persistent verdict cache (production only). Gitignored. If it's missing or corrupt, `VerdictCache.load()` warns and starts fresh — the run still works, it just re-evaluates everything as new. Don't delete it unless you want to re-evaluate every job next run (or use `--refresh`).
+- **🆕 badges are driven by `ReportContext.newJobUrls`** — a `Set<string>` of URLs accumulated in `main.ts` from `newlyEvaluated` + `dropped`. NOT a field on `EvaluatedJob<T>` (keep that type pure). Cached jobs are absent from the set → they never badge. The first run and `--refresh` badge everything (all jobs are newly evaluated). `--only-new` filters table bodies but count boxes stay total. The eval path never sets `newJobUrls`/`onlyNew`.
 
 ## Filter Rules Reference
 
@@ -309,4 +348,5 @@ Each accomplishment should follow this pattern:
 - `pnpm compare-prompts <model> --variants v1,v2` runs only the specified custom variants (+ baseline), skipping the rest
 - **`--site <name>`** scopes either script to one site's golden dataset (`wuzzuf` | `indeed` | `workable`) instead of the combined dataset — e.g. `pnpm eval qwenReason --site indeed`. Valid keys are the entries of `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts`
 - **Both scripts share the same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in `src/pipeline/run-filter.ts` — the caller resolves the dataset via `getGoldenDataset(site?)` and passes it in; `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
+- **The verdict cache does NOT affect evals** — `eval.ts`, `compare-models.ts`, and `compare-prompts.ts` call `runFilterEval` directly and never construct a `VerdictCache`. Only `main.ts` (the production pipeline) uses the cache. So eval results are deterministic across runs regardless of cache state.
 - **Strict vs tolerant**: the production pipeline (`evaluate.ts`) calls `runFilterLLMCall(..., { mode: 'strict' })` which throws on **unknown or duplicate** URLs (genuine LLM malfunction); eval scripts use `'tolerant'` mode (warn and continue) so noisy LLM output can still be scored. **Dropped jobs are always non-fatal** regardless of mode: input URLs the LLM omitted are collected into a `dropped` array and surfaced in the report (`ReportContext.droppedJobs`), so a common LLM hiccup no longer throws away an entire site's worth of results. The `checkNoDroppedJobs` structural heuristic (used in eval) independently logs drops for scoring.

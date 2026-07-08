@@ -17,7 +17,7 @@ marked.use(markedTerminal({
  */
 export class CliTableReporter implements Reporter {
     async display(jobs: EvaluatedJob<BaseJob>[], summary: string, ctx: ReportContext): Promise<void> {
-        const tablesMarkdown = buildReportTables(jobs);
+        const tablesMarkdown = buildReportTables(jobs, ctx.newJobUrls, ctx.onlyNew);
         const droppedSection = buildDroppedJobsSection(ctx.droppedJobs);
         const droppedBlock = droppedSection ? `\n\n${droppedSection}` : "";
         const fullMarkdown = `${tablesMarkdown}${droppedBlock}\n\n${summary}`;

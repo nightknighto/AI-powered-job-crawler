@@ -5,7 +5,7 @@ import { Marked } from "marked";
 import { BaseJob } from "../types/base.js";
 import { EvaluatedJob } from "../types/evaluated-job.js";
 import { ReportContext, Reporter } from "./types.js";
-import { splitByStatus, sortByDate } from "./report-helpers.js";
+import { splitByStatus, sortByNewThenDate } from "./report-helpers.js";
 
 /** Generates a styled HTML report with full-width tables, auto-opens in the default browser.
  * Saved to `reports/YYYY-MM-DD_HH-MM-SS.html`.
@@ -30,8 +30,16 @@ export class HtmlReporter implements Reporter {
 
     private buildHtml(jobs: EvaluatedJob<BaseJob>[], summary: string, ctx: ReportContext): string {
         const { passing, failing } = splitByStatus(jobs);
-        const passingSorted = sortByDate(passing);
-        const failingSorted = sortByDate(failing);
+        const newUrls = ctx.newJobUrls;
+        // `--only-new` filters the table bodies; counts below stay from the full split.
+        const showPassing = ctx.onlyNew ? passing.filter((j) => newUrls?.has(j.job.jobURL)) : passing;
+        const showFailing = ctx.onlyNew ? failing.filter((j) => newUrls?.has(j.job.jobURL)) : failing;
+        const passingSorted = sortByNewThenDate(showPassing, newUrls);
+        const failingSorted = sortByNewThenDate(showFailing, newUrls);
+        const newCount = jobs.filter((j) => newUrls?.has(j.job.jobURL)).length;
+        const onlyNewHint = ctx.onlyNew
+            ? `<p class="meta">🔍 <strong>--only-new</strong>: showing ${showPassing.length + showFailing.length} new of ${jobs.length} total jobs in the tables below. Counts reflect the full run.</p>`
+            : "";
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -74,22 +82,24 @@ ${ctx.droppedJobs?.length ? `<p class="skipped">🫥 Dropped by LLM (${ctx.dropp
   <div class="count-box"><div class="number pass">${passing.length}</div><div class="label">Passing</div></div>
   <div class="count-box"><div class="number fail">${failing.length}</div><div class="label">Filtered</div></div>
   <div class="count-box"><div class="number">${jobs.length}</div><div class="label">Total</div></div>
+  <div class="count-box"><div class="number" style="color:#0d6efd">${newCount}</div><div class="label">New</div></div>
 </div>
+${onlyNewHint}
 
 <h2 class="pass">✅ Passing Jobs (including Potential Matches)</h2>
 <table>
 <thead><tr><th>Site</th><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
 <tbody>
-${passingSorted.map((j) => this.tableRow(j)).join("\n")}
+${passingSorted.length > 0 ? passingSorted.map((j) => this.tableRow(j, newUrls)).join("\n") : '<tr><td colspan="8" style="color:#6c757d;font-style:italic;">No new passing jobs.</td></tr>'}
 </tbody>
 </table>
 
 <details>
-<summary class="fail">❌ Filtered Out Jobs (${failing.length})</summary>
+<summary class="fail">❌ Filtered Out Jobs (${showFailing.length})</summary>
 <table>
 <thead><tr><th>Site</th><th>Job Title</th><th>Company</th><th>Location</th><th>Posted Date</th><th>Experience</th><th>Skills</th><th>Reason</th></tr></thead>
 <tbody>
-${failingSorted.map((j) => this.tableRow(j)).join("\n")}
+${failingSorted.length > 0 ? failingSorted.map((j) => this.tableRow(j, newUrls)).join("\n") : '<tr><td colspan="8" style="color:#6c757d;font-style:italic;">No new filtered jobs.</td></tr>'}
 </tbody>
 </table>
 </details>
@@ -99,12 +109,13 @@ ${summary ? `<h2>📝 Detailed Summary</h2><div class="summary-section">${new Ma
 </html>`;
     }
 
-    private tableRow(job: EvaluatedJob<BaseJob>): string {
+    private tableRow(job: EvaluatedJob<BaseJob>, newUrls?: Set<string>): string {
         const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, " ").trim();
+        const isNew = newUrls?.has(job.job.jobURL);
         const experience = job.experienceLevel ?? "N/A";
         const skills = job.skills?.join(", ") ?? "N/A";
         const reason = job.reason.join("; ");
-        const title = `<a href="${esc(job.job.jobURL)}" target="_blank">${esc(job.job.jobTitle)}</a>`;
+        const title = `<a href="${esc(job.job.jobURL)}" target="_blank">${isNew ? "🆕 " : ""}${esc(job.job.jobTitle)}</a>`;
 
         return `<tr><td>${esc(job.job.site)}</td><td>${title}</td><td>${esc(job.job.company)}</td><td>${esc(job.job.location)}</td><td>${esc(job.job.date)}</td><td>${esc(experience)}</td><td>${esc(skills)}</td><td>${esc(reason)}</td></tr>`;
     }

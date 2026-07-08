@@ -4,3 +4,4 @@
 - Implemented a systematic testing discipline with a 42-entry golden dataset (real + synthetic edge cases) and automated benchmarking to objectively measure filter accuracy, catch regressions, and validate prompt or model changes.
 - Built a composable reporter system with 5 output formats (cli-table, cli-card, cli-summary, HTML, markdown), cleanly decoupling LLM summary generation from rendering so reporters can be composed freely.
 - Enabled objective prompt engineering by implementing a comparison system that tests multiple filter prompt variants against the same model on the golden dataset, surfacing which prompt formulation yields the best PASS F1, accuracy, and token efficiency — replacing guesswork with evidence.
+- Reduced LLM filter tokens and latency by up to 100% on daily runs by adding a persistent verdict cache — previously-seen job postings skip filtering entirely, so the LLM spends effort only on genuinely-new listings each day.

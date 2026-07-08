@@ -56,25 +56,40 @@ crawl() → evaluate() → generateSummary() → reporters.display()
    T[]    EvaluatedJob<T>[]      string            void
 ```
 
-```mermaid
-sequenceDiagram
-    participant main as main.ts
-    participant crawl as crawl()
-    participant evaluate as evaluate()
-    participant summarize as generateSummary()
-    participant reporters as reporters.display()
+The eval path (`eval.ts`, `compare-models.ts`) calls `runFilterEval` directly and bypasses
+`evaluate` / `generateSummary` / reporters.
 
-    main->>crawl: SiteConfig<T>
-    crawl-->>main: T[] (raw jobs)
-    main->>evaluate: jobs + SiteConfig + modelConfig
-    Note right of evaluate: Delegates to runFilterLLMCall (strict)
-    evaluate-->>main: EvaluatedJob<T>[]
-    main->>summarize: evaluatedJobs + modelConfig
-    Note right of summarize: LLM summary for passing jobs only (shared prompt)
-    summarize-->>main: string (summary markdown)
-    main->>reporters: jobs + summary + ReportContext
-    Note right of reporters: Composable: cli-table, html, markdown, etc.
+## Verdict Cache (production only)
+
+`main.ts` wraps `evaluate` in a **verdict-cache stage** so daily runs skip re-filtering jobs seen
+before. The cache (`src/state/verdict-cache.ts`) persists `jobURL → verdict` to
+`state/verdict-cache.json` (gitignored). Per-site loop in `main.ts`:
+
+1. **Crawl** — unchanged; Crawlee fetches up to 7 days of postings.
+2. **Partition** — split into `cached` (URL has a stored verdict) vs `new` (no verdict).
+3. **`evaluate(new only)`** — `evaluate.ts` is unchanged (always evaluates, 3 params). Only new
+   jobs go to the LLM. If all jobs are cached, the LLM filter call is skipped entirely.
+4. **Reconstruct cached** — `cache.toEvaluatedJob(job)` stamps the cached verdict onto today's
+   fresh job body (so reports show current `date`/`jobDetails`).
+5. **Merge** — fresh + cached verdicts flow into `evaluatedAll`.
+6. **Record** — `cache.set(ev)` per newly-evaluated job (in-memory). Dropped jobs are NOT recorded.
+7. **Persist once** — `cache.save()` after all sites (atomic write + 30-day prune).
+
 ```
+crawl → partition → evaluate(new) → reconstruct(cached) → merge → record → [after all sites] save
+                                         ↑ cached jobs skip the LLM entirely
+```
+
+- **`--refresh`** — `pnpm start <site> --refresh` ignores cached verdicts, re-evaluates ALL crawled
+  jobs, and updates the store (preserving `firstSeenAt` for known URLs). Run after editing
+  `filter.md`.
+- **Eval path is cache-free** — `eval.ts` / `compare-models.ts` / `compare-prompts.ts` never
+  construct a `VerdictCache`, so golden-dataset evaluation stays deterministic.
+- **Newness is surfaced in reports** — `main.ts` passes a `newJobUrls: Set<string>` of URLs
+  evaluated or dropped this run via `ReportContext`. Reporters badge those jobs with 🆕, sort them
+  to the top of each group, and the HTML report adds a "New" count box. `--only-new` hides cached
+  jobs from the tables (count boxes stay total). See `src/reporters/README.md` for the per-reporter
+  details. Cached jobs never badge; the eval path never sets `newJobUrls` (no cache → no badges).
 
 ## Key Types
 

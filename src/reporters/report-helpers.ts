@@ -50,47 +50,87 @@ export function sortByDate<T extends BaseJob>(jobs: EvaluatedJob<T>[]): Evaluate
     return [...jobs].sort((a, b) => parseRelativeDate(a.job.date) - parseRelativeDate(b.job.date));
 }
 
+/** Sort jobs newest-date-first, with new jobs (in `newUrls`) promoted to the top.
+ * When `newUrls` is undefined/empty, behaves identically to {@link sortByDate}. */
+export function sortByNewThenDate<T extends BaseJob>(
+    jobs: EvaluatedJob<T>[],
+    newUrls?: Set<string>,
+): EvaluatedJob<T>[] {
+    if (!newUrls || newUrls.size === 0) return sortByDate(jobs);
+    return [...jobs].sort((a, b) => {
+        const aNew = newUrls.has(a.job.jobURL) ? 0 : 1;
+        const bNew = newUrls.has(b.job.jobURL) ? 0 : 1;
+        if (aNew !== bNew) return aNew - bNew;
+        return parseRelativeDate(a.job.date) - parseRelativeDate(b.job.date);
+    });
+}
+
 /** Escape pipe characters in a string for safe use in markdown tables. */
 function esc(str: string): string {
     return str.replace(/\|/g, "\\|").replace(/\n/g, " ").trim();
 }
 
-/** Build a markdown table row for a single job. */
-function tableRow<T extends BaseJob>(job: EvaluatedJob<T>): string {
+/** Build a markdown table row for a single job. Prepends a 🆕 badge to the title
+ * when the job's URL is in `newUrls` (newly evaluated or dropped this run). */
+function tableRow<T extends BaseJob>(job: EvaluatedJob<T>, newUrls?: Set<string>): string {
+    const titlePrefix = newUrls?.has(job.job.jobURL) ? "🆕 " : "";
     const experience = job.experienceLevel ?? "N/A";
     const skills = job.skills?.join(", ") ?? "N/A";
     const reason = job.reason.join("; ");
 
-    return `| ${esc(job.job.site)} | ${esc(job.job.jobTitle)} | ${esc(job.job.company)} | ${esc(job.job.location)} | ${esc(job.job.date)} | ${esc(experience)} | ${esc(skills)} | ${esc(reason)} |`;
+    return `| ${esc(job.job.site)} | ${titlePrefix}${esc(job.job.jobTitle)} | ${esc(job.job.company)} | ${esc(job.job.location)} | ${esc(job.job.date)} | ${esc(experience)} | ${esc(skills)} | ${esc(reason)} |`;
 }
 
 /** Build the deterministic report section: two tables + summary counts.
  * No LLM calls — pure data formatting.
+ *
+ * @param jobs     - All evaluated jobs (new + cached).
+ * @param newUrls  - URLs of jobs newly evaluated or dropped this run. Drives the 🆕 badge and new-to-top sort.
+ *                   When omitted, no badges render and sort falls back to date-only.
+ * @param onlyNew  - When true, table bodies show only new jobs. Count boxes always reflect the full set.
  */
-export function buildReportTables<T extends BaseJob>(jobs: EvaluatedJob<T>[]): string {
+export function buildReportTables<T extends BaseJob>(
+    jobs: EvaluatedJob<T>[],
+    newUrls?: Set<string>,
+    onlyNew?: boolean,
+): string {
     const { passing, failing } = splitByStatus(jobs);
-    const passingSorted = sortByDate(passing);
-    const failingSorted = sortByDate(failing);
+    // Counts always reflect the FULL split, even under `--only-new`.
+    const totalPassing = passing.length;
+    const totalFailing = failing.length;
+
+    const showPassing = onlyNew ? passing.filter((j) => newUrls?.has(j.job.jobURL)) : passing;
+    const showFailing = onlyNew ? failing.filter((j) => newUrls?.has(j.job.jobURL)) : failing;
+
+    const passingSorted = sortByNewThenDate(showPassing, newUrls);
+    const failingSorted = sortByNewThenDate(showFailing, newUrls);
 
     const header =
         "| Site | Job Title | Company | Location | Posted Date | Experience | Skills | Reason |\n" +
         "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |";
+    const emptyRow = "|  | _No new jobs in this group._ |  |  |  |  |  |  |";
 
     const passingTable =
         `## ✅ Passing Jobs (including Potential Matches)\n\n` +
+        (onlyNew ? `> Showing ${showPassing.length} new of ${totalPassing} total.\n\n` : "") +
         header + "\n" +
-        passingSorted.map(tableRow).join("\n");
+        (passingSorted.length > 0
+            ? passingSorted.map((j) => tableRow(j, newUrls)).join("\n")
+            : emptyRow);
 
     const failingTable =
         `## ❌ Filtered Out Jobs\n\n` +
+        (onlyNew ? `> Showing ${showFailing.length} new of ${totalFailing} total.\n\n` : "") +
         header + "\n" +
-        failingSorted.map(tableRow).join("\n");
+        (failingSorted.length > 0
+            ? failingSorted.map((j) => tableRow(j, newUrls)).join("\n")
+            : emptyRow);
 
     const summary =
         `## Final Summary\n\n` +
         `- Total searched: ${jobs.length}\n` +
-        `- Matched after review: ${passing.length} (PASS + POTENTIAL_MATCH)\n` +
-        `- Filtered out: ${failing.length} (FAIL)`;
+        `- Matched after review: ${totalPassing} (PASS + POTENTIAL_MATCH)\n` +
+        `- Filtered out: ${totalFailing} (FAIL)`;
 
     return `${passingTable}\n\n${failingTable}\n\n${summary}`;
 }
