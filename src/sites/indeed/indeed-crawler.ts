@@ -1,13 +1,17 @@
-import { CheerioCrawler } from "crawlee";
+import { CheerioCrawler, Dataset } from "crawlee";
 import { IndeedJob } from "../../types/IndeedJob.js";
-import fs from 'fs/promises';
 import { extractTextWithLineBreaks } from "../../helpers/extractTextWithLineBreaks.js";
 
 const START_URL = 'https://eg.indeed.com/jobs?q=react%2C+node%2C+typescript&l=Cairo&fromage=3&from=searchOnDesktopSerp&vjk=298dd0a9993ccb9b';
 
 export async function crawlIndeed(): Promise<IndeedJob[]> {
+    // Named dataset, dropped each run so multi-site runs don't collide on `default`.
+    const dataset = await Dataset.open("indeed");
+    await dataset.drop();
+    const store = await Dataset.open("indeed");
+
     const crawler = new CheerioCrawler({
-        async requestHandler({ request, $, enqueueLinks, log, pushData }) {
+        async requestHandler({ request, $, enqueueLinks, log }) {
             const title = $('title').text();
             log.info(`Crawling '${title}' - from ${request.userData?.source || 'seed URL'}`);
 
@@ -43,7 +47,7 @@ export async function crawlIndeed(): Promise<IndeedJob[]> {
 
                 const jobDescription = $('#jobDescriptionText').text()
 
-                await pushData({
+                await store.pushData({
                     site: "indeed",
                     jobTitle: jobTitle || 'N/A',
                     jobURL: request.url,
@@ -59,14 +63,6 @@ export async function crawlIndeed(): Promise<IndeedJob[]> {
 
     await crawler.run([START_URL]);
 
-    const files = await fs.readdir("./storage/datasets/default");
-    const jobsList: IndeedJob[] = [];
-
-    for (const file of files) {
-        const content = await fs.readFile(`./storage/datasets/default/${file}`, "utf-8");
-        const json = JSON.parse(content);
-        jobsList.push(json);
-    }
-
-    return jobsList;
+    const { items } = await store.getData();
+    return items as IndeedJob[];
 }

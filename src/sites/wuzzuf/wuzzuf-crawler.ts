@@ -1,7 +1,6 @@
-import { CheerioCrawler } from "crawlee";
+import { CheerioCrawler, Dataset } from "crawlee";
 import { extractTextWithLineBreaks } from "../../helpers/extractTextWithLineBreaks.js";
 import { WuzzufJob } from "../../types/WuzzufJob.js";
-import fs from 'fs/promises';
 
 const START_URLS = [
     'https://wuzzuf.net/search/jobs?q=javascript&filters%5Bworkplace_arrangement%5D%5B0%5D=hybrid&filters%5Bworkplace_arrangement%5D%5B1%5D=remote&filters%5Bpost_date%5D%5B0%5D=within_1_week&filters%5Broles%5D%5B0%5D=IT%2FSoftware%20Development&a=navbg%7Cspbg',
@@ -11,8 +10,16 @@ const START_URLS = [
 ];
 
 export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
+    // Named datasets aren't auto-purged like the default one, so each crawler clears its own
+    // dataset at the start of every run. This also keeps multi-site runs correct: without it,
+    // every site's pushData would collide in `storage/datasets/default` (one process, one shared
+    // default dataset) and each crawler would read back a contaminated mix of all sites' jobs.
+    const dataset = await Dataset.open("wuzzuf");
+    await dataset.drop();
+    const store = await Dataset.open("wuzzuf");
+
     const crawler = new CheerioCrawler({
-        async requestHandler({ request, $, enqueueLinks, log, pushData }) {
+        async requestHandler({ request, $, enqueueLinks, log }) {
             const title = $('title').text();
             log.info(`Crawling '${title}' - from ${request.userData?.source || 'seed URL'}`);
 
@@ -29,7 +36,7 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
                 const jobDetails = $('section.css-5pnqc5');
                 const company = extractTextWithLineBreaks($, $('div.css-9iujih').first()).replace(' -', ''); // Get company name (first line before any location info)
 
-                await pushData({
+                await store.pushData({
                     site: "wuzzuf",
                     jobTitle: $('h1.css-gkdl1m').text(),
                     jobURL: request.url,
@@ -46,16 +53,6 @@ export async function crawlWuzzuf(): Promise<WuzzufJob[]> {
 
     await crawler.run(START_URLS);
 
-    const files = await fs.readdir("./storage/datasets/default");
-    const jobsList: WuzzufJob[] = [];
-
-    for (const file of files) {
-        const content = await fs.readFile(`./storage/datasets/default/${file}`, "utf-8");
-        const json = JSON.parse(content);
-        jobsList.push(json);
-    }
-
-    // await fs.writeFile("./storage/datasets/wuzzuf-jobs.json", JSON.stringify(jobsList, null, 2), "utf-8");
-
-    return jobsList;
+    const { items } = await store.getData();
+    return items as WuzzufJob[];
 }

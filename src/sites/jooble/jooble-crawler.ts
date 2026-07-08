@@ -1,7 +1,6 @@
-import { PlaywrightCrawler, sleep } from "crawlee";
+import { PlaywrightCrawler, sleep, Dataset } from "crawlee";
 import { chromium } from "playwright-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
-import fs from 'fs/promises';
 import { JoobleJob } from "../../types/JoobleJob.js";
 
 chromium.use(stealthPlugin());
@@ -9,6 +8,11 @@ chromium.use(stealthPlugin());
 const START_URL = 'https://eg.jooble.org/SearchResult?date=3&loc=6&rgns=Cairo&ukw=javascript%20typescript%20react%20node.js'
 
 export async function crawlJooble(): Promise<JoobleJob[]> {
+    // Named dataset, dropped each run so multi-site runs don't collide on `default`.
+    const dataset = await Dataset.open("jooble");
+    await dataset.drop();
+    const store = await Dataset.open("jooble");
+
     const crawler = new PlaywrightCrawler({
         launchContext: {
             launcher: chromium,
@@ -18,7 +22,7 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
                 await handleCloudflareChallenge();
             },
         ],
-        async requestHandler({ request, page, enqueueLinks, log, pushData }) {
+        async requestHandler({ request, page, enqueueLinks, log }) {
             const title = await page.title();
             log.info(`Crawling '${title}' - from ${request.userData?.source || 'seed URL'}`);
 
@@ -29,7 +33,7 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
                     userData: { source: title },
                 });
             } else {
-                await pushData({
+                await store.pushData({
                     site: "jooble",
                     jobTitle: await page.locator('[data-test-name="_jdpHeaderBlock"] h1').textContent() || 'N/A',
                     jobURL: request.url,
@@ -55,14 +59,6 @@ export async function crawlJooble(): Promise<JoobleJob[]> {
 
     await crawler.run([START_URL]);
 
-    const files = await fs.readdir("./storage/datasets/default");
-    const jobsList: JoobleJob[] = [];
-
-    for (const file of files) {
-        const content = await fs.readFile(`./storage/datasets/default/${file}`, "utf-8");
-        const json = JSON.parse(content);
-        jobsList.push(json);
-    }
-
-    return jobsList;
+    const { items } = await store.getData();
+    return items as JoobleJob[];
 }

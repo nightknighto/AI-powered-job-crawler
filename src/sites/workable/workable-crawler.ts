@@ -1,12 +1,16 @@
-import { PlaywrightCrawler } from "crawlee";
-import fs from 'fs/promises';
+import { PlaywrightCrawler, Dataset } from "crawlee";
 import { WorkableJob } from "../../types/WorkableJob.js";
 
 const START_URL = 'https://jobs.workable.com/search?location=Cairo%2C+Egypt&query=javascript+react+node.js+typescript&workplace=remote&workplace=hybrid&day_range=7&selectedJobId=01faf769-3f4f-48eb-832e-d9c16fd1dced';
 
 export async function crawlWorkable(): Promise<WorkableJob[]> {
+    // Named dataset, dropped each run so multi-site runs don't collide on `default`.
+    const dataset = await Dataset.open("workable");
+    await dataset.drop();
+    const store = await Dataset.open("workable");
+
     const crawler = new PlaywrightCrawler({
-        async requestHandler({ request, page, enqueueLinks, log, pushData }) {
+        async requestHandler({ request, page, enqueueLinks, log }) {
             const title = await page.title();
             log.info(`Crawling '${title}' - from ${request.userData?.source || 'seed URL'}`);
 
@@ -21,7 +25,7 @@ export async function crawlWorkable(): Promise<WorkableJob[]> {
                 const breakdownSections = await page.locator('.jobBreakdown__job-breakdown--31MGR > section').all();
                 const jobDetails = await Promise.all(breakdownSections.map(async (section) => await section.innerText() || 'N/A'));
 
-                await pushData({
+                await store.pushData({
                     site: "workable",
                     jobTitle: await page.locator('[data-ui="overview-title"]').textContent() || 'N/A',
                     jobURL: request.url,
@@ -37,14 +41,6 @@ export async function crawlWorkable(): Promise<WorkableJob[]> {
 
     await crawler.run([START_URL]);
 
-    const files = await fs.readdir("./storage/datasets/default");
-    const jobsList: WorkableJob[] = [];
-
-    for (const file of files) {
-        const content = await fs.readFile(`./storage/datasets/default/${file}`, "utf-8");
-        const json = JSON.parse(content);
-        jobsList.push(json);
-    }
-
-    return jobsList;
+    const { items } = await store.getData();
+    return items as WorkableJob[];
 }
