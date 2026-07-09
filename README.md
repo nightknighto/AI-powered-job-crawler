@@ -89,8 +89,9 @@ changing the filter rules). The eval system is unaffected — it never reads or 
 
 New jobs are **marked** in the report: each job evaluated or dropped this run gets a 🆕 badge
 and sorts to the top of its group, and the HTML report adds a "New" count box. `--only-new`
-hides cached jobs from the tables so you see only today's discoveries (count boxes stay total).
-The first run (cache empty) and `--refresh` badge every job, since all are newly evaluated.
+hides cached jobs from the tables so you see only today's discoveries (count boxes stay total),
+and also scopes the LLM summary to just the newly-evaluated passing jobs. The first run
+(cache empty) and `--refresh` badge every job, since all are newly evaluated.
 
 ## Evaluation System
 

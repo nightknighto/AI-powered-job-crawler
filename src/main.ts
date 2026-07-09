@@ -3,6 +3,7 @@ import { crawl } from "./pipeline/crawl.js";
 import { evaluate } from "./pipeline/evaluate.js";
 import { generateSummary } from "./pipeline/generate-summary.js";
 import { createReporters } from "./reporters/index.js";
+import { splitByStatus } from "./reporters/report-helpers.js";
 import { modelConfigs, shared } from "./config.js";
 import { BaseJob } from "./types/base.js";
 import { EvaluatedJob } from "./types/evaluated-job.js";
@@ -118,8 +119,15 @@ for (const site of selectedSites) {
 // Stage 7: Persist the cache once after all sites (atomic write + 30-day prune).
 cache.save();
 
-// One combined summary across every passing job from every site that succeeded.
-const summary = await generateSummary(evaluatedAll, model);
+// The summary covers passing jobs only. Under `--only-new` it's narrowed to newly-evaluated
+// passing jobs so it matches the filtered tables; otherwise it covers all passing jobs (new +
+// cached) for a self-contained report. Filtering lives here in the orchestrator, not in
+// `generateSummary` — that function just summarizes exactly what it's handed.
+const { passing: passingJobs } = splitByStatus(evaluatedAll);
+const summaryJobs = onlyNew
+    ? passingJobs.filter((ev) => newJobUrls.has(ev.job.jobURL))
+    : passingJobs;
+const summary = await generateSummary(summaryJobs, model);
 
 const reporters = createReporters(shared.reporters);
 await reporters.display(evaluatedAll, summary, {

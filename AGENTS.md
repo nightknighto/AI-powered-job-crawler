@@ -117,12 +117,15 @@ const cachedJobs = refresh ? [] : jobs.filter((j) => cache.has(j.jobURL));
   reporter prepends a 🆕 badge to a new job's title, sorts new jobs to the top within each group
   (`sortByNewThenDate` in `report-helpers.ts`), and the HTML reporter adds a 4th blue "New" count
   box. **Cached jobs never badge.** The `--only-new` flag (`ReportContext.onlyNew`) hides cached
-  jobs from the tables (passing/failing/dropped show only new) while **count boxes stay total**.
-  **Invariant:** a job is "new" iff it was evaluated or dropped this run — so the first run (cache
-  empty) and `--refresh` (re-evaluates all) badge every job. The summary still covers **all**
-  passing jobs (new + cached). The eval path never sets `newJobUrls`/`onlyNew`, so eval reports
-  have no badges. Newness travels via `ctx.newJobUrls`, **not** a field on `EvaluatedJob<T>` — keep
-  that type pure.
+  jobs from the tables (passing/failing/dropped show only new) while **count boxes stay total**, and
+  also scopes the **LLM summary** to newly-evaluated passing jobs (`main.ts` computes the exact set
+  to summarize — passing-only always, narrowed to new under `--only-new` — and hands it to a pure
+  `generateSummary`). **Invariant:** a job is "new" iff it was evaluated or dropped this run — so the
+  first run (cache empty) and `--refresh` (re-evaluates all) badge every job. By default (no flag) the
+  summary covers **all** passing jobs (new + cached) for a self-contained report. The eval path never
+  sets `newJobUrls`/`onlyNew`, so eval reports have no badges. Newness travels via `ctx.newJobUrls`,
+  **not** a field on `EvaluatedJob<T>` — keep that
+  type pure.
 
 ### Site addition pattern
 
@@ -334,7 +337,7 @@ Each accomplishment should follow this pattern:
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl
 - **Crawlers must use per-site named datasets** — Crawlee only auto-purges the *default* (unnamed) storages once per process. In an `all` run every crawler shares that one process, so any crawler using the default `pushData` collides on `storage/datasets/default` and silently reads back a mix of every site's jobs (a data-correctness bug, not just stale files). Each crawler opens `Dataset.open("<site>")`, drops it at the start of every run (named ≠ auto-purged), and reads back via `getData()`. Do not `readdir`/`JSON.parse` `storage/` directly.
 - **`state/verdict-cache.json`** is the persistent verdict cache (production only). Gitignored. If it's missing or corrupt, `VerdictCache.load()` warns and starts fresh — the run still works, it just re-evaluates everything as new. Don't delete it unless you want to re-evaluate every job next run (or use `--refresh`).
-- **🆕 badges are driven by `ReportContext.newJobUrls`** — a `Set<string>` of URLs accumulated in `main.ts` from `newlyEvaluated` + `dropped`. NOT a field on `EvaluatedJob<T>` (keep that type pure). Cached jobs are absent from the set → they never badge. The first run and `--refresh` badge everything (all jobs are newly evaluated). `--only-new` filters table bodies but count boxes stay total. The eval path never sets `newJobUrls`/`onlyNew`.
+- **🆕 badges are driven by `ReportContext.newJobUrls`** — a `Set<string>` of URLs accumulated in `main.ts` from `newlyEvaluated` + `dropped`. NOT a field on `EvaluatedJob<T>` (keep that type pure). Cached jobs are absent from the set → they never badge. The first run and `--refresh` badge everything (all jobs are newly evaluated). `--only-new` filters table bodies (count boxes stay total) AND narrows the jobs handed to `generateSummary` to newly-evaluated passing jobs (filtering lives in `main.ts`; `generateSummary` itself is a pure template-applier). The eval path never sets `newJobUrls`/`onlyNew`.
 
 ## Filter Rules Reference
 

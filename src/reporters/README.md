@@ -76,7 +76,7 @@ Daily runs overlap up to 7 days of postings, so the report mixes cached (already
 - **🆕 badge** — prepended to a job's title when it was newly evaluated or dropped this run. Cached jobs never badge.
 - **New-to-top sort** — new jobs sort to the top of each table/card list (within each group, newest-date-first). Driven by `sortByNewThenDate(jobs, newUrls)` in `report-helpers.ts`; falls back to `sortByDate` when `newUrls` is empty/undefined.
 - **"New" count box** (HTML only) — a 4th blue count box showing how many jobs are new this run. Always shown (informative even at 0).
-- **`--only-new` flag** — hides cached jobs from the tables (passing/failing/dropped show only new jobs). **Count boxes stay total** so you retain awareness of the full set. A "showing N new of M total" hint appears under the counts.
+- **`--only-new` flag** — hides cached jobs from the tables (passing/failing/dropped show only new jobs). **Count boxes stay total** so you retain awareness of the full set, and the LLM summary is likewise narrowed to newly-evaluated passing jobs (orchestrated in `main.ts`; `generateSummary` just summarizes what it's given, so it plays no role here). A "showing N new of M total" hint appears under the counts.
 
 **Invariant:** a job is "new" iff its URL was evaluated or dropped this run. Consequences:
 - First run (cache empty) → every job badges new (technically accurate).

@@ -35,10 +35,10 @@ Single source of truth for the LLM filter call. Used by `evaluate.ts` (productio
 ### 3. `generate-summary.ts`
 
 ```ts
-generateSummary<T extends BaseJob>(evaluatedJobs: EvaluatedJob<T>[], modelConfig: ModelConfig): Promise<string>
+generateSummary<T extends BaseJob>(jobs: EvaluatedJob<T>[], modelConfig: ModelConfig): Promise<string>
 ```
 
-Generates an LLM summary for passing jobs only, using the shared `jobSummaryPrompt` template. Returns the raw markdown string (empty string if no passing jobs). Deterministic table generation is handled by reporters via `buildReportTables()`.
+Pure template-applier: generates an LLM summary of **exactly** the jobs passed in, using the shared `jobSummaryPrompt` template. Returns the raw markdown string (empty string if `jobs` is empty). Deterministic table generation is handled by reporters via `buildReportTables()`. All filtering (passing-only, `--only-new` narrowing) is the caller's responsibility — `main.ts` computes the exact set to summarize and hands it over.
 
 ### 4. `report-helpers.ts`
 
