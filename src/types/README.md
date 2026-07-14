@@ -16,8 +16,10 @@ Generic wrappers:
 
 ```
 EvaluatedJob<T>     (evaluated-job.ts)  — original job + AI verdict
-GoldenEntry<T>      (GoldenEntry.ts)    — original job + expected label (for eval)
+GoldenEntry         (GoldenEntry.ts)    — one unified eval case (BaseJob + expected label + rule-isolation metadata)
 ```
+
+`EvaluatedJob<T>` is generic over the job type; `GoldenEntry` is **not** generic — it is a plain interface over `BaseJob`. See the `GoldenEntry` / `CaseCategory` section below.
 
 Reporter types are defined in `src/reporters/types.ts` — see [`src/reporters/README.md`](../reporters/README.md).
 
@@ -84,15 +86,42 @@ The `site` field is **not** part of `SiteConfig` — crawlers return jobs withou
 
 `jobEvaluationSchema` is the shared Zod schema for the LLM's filter output. It is converted to JSON Schema via `z.toJSONSchema()` and passed to Ollama's structured-output feature. Used by `src/pipeline/evaluate.ts`, `src/eval.ts`, and `src/compare-models.ts` — **never overridden per site**.
 
-### `GoldenEntry<T extends BaseJob = BaseJob>` (`GoldenEntry.ts`)
+### `GoldenEntry` (`GoldenEntry.ts`)
 
-A single hand-labeled entry in the golden dataset for eval benchmarking:
+A single hand-labeled case in the unified golden dataset for eval benchmarking. Not generic — it's a plain interface over `BaseJob`. The case library lives entirely under `src/evals/cases/<category>.ts` (one file per `CaseCategory`, plus an `index.ts` aggregator) and is site-agnostic (no per-site golden datasets anymore).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `job` | `T` | The job listing to feed into the LLM |
-| `expectedStatus` | `JobStatus` | The expected evaluation status (ground truth) |
-| `expectedReasonKeywords` | `string[]` | Keywords that should appear in the AI's `reason` array |
+| `id` | `string` | Signal-descriptive slug, globally unique, stable under insert/remove. Format `<category-prefix>-<what-makes-this-case-unique>[-status]` (e.g. `exp-threshold-4yr-fail`, `role-qa-junior-fail`, `ambig-dualstack-pm`). The suffix describes the case's signal, never a sequence number — so adding/removing a sibling case never forces a renumber. |
+| `category` | `CaseCategory` | The **one** filter rule this case isolates (also determines its file). |
+| `real` | `boolean` | `true` if sourced from a real crawled job (`storage/datasets/*.json` or a historical `realJobs` array); `false` if a synthetic gap-filler (which uses clearly-fake URLs). |
+| `job` | `BaseJob` | The job listing to feed into the LLM (minimal `BaseJob` shape, no `tags`). |
+| `expectedStatus` | `JobStatus` | The expected evaluation status (ground truth). |
+| `isolationNote` | `string` | What signal this case isolates and why it is single-causal — which filters are deliberately green so only the target rule can trigger. Shown in the eval report on mismatch to aid human inspection. |
+
+Each case isolates exactly one filter rule (single-causal by construction) so per-category accuracy directly pinpoints which rules a model mishandles. `multi-cause` is the deliberate exception — its cases carry several valid failure reasons and are scored on status only.
+
+### `CaseCategory` (`GoldenEntry.ts`)
+
+Union of the eight rule categories the case library is organized into. Each value maps to a file under `src/evals/cases/<category>.ts` and is independently selectable via the `--category` eval flag, so a run can be scoped to a single rule at a time:
+
+```ts
+type CaseCategory =
+    | "title-seniority"
+    | "internship"
+    | "tech-stack"
+    | "role-type"
+    | "experience"
+    | "location"
+    | "ambiguous"
+    | "multi-cause";
+```
+
+`ambiguous` is the POTENTIAL_MATCH fallback category; `multi-cause` is the compound-rejection category (scored on status only).
+
+### `SiteKey` (unchanged)
+
+`SiteKey` is still derived from the production `sites` registry (`src/sites/registry.ts`) — see `BaseJob.site` above. The old `GoldenSiteKey` type was removed in the eval redesign (the unified case library is site-agnostic, so there's no per-site key for golden datasets anymore).
 
 ## Zod Schemas vs TypeScript Interfaces
 

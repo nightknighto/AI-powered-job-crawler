@@ -8,8 +8,14 @@ export interface HeuristicResult {
     details: string;
 }
 
-/** Title keywords that should cause a FAIL (unless the prompt's 2-3yr exception applies) */
-const SENIOR_TITLE_KEYWORDS = ["senior", "lead", "manager", "head of", "director", "principal", "staff"];
+/**
+ * Title keywords that the prompt's Title Filter treats as a hard reject
+ * (`filter.md` §Title). NOTE: "senior" is intentionally absent — per the prompt,
+ * seniority is enforced via the Experience Filter and the documented 2-3yr
+ * exception, NOT by the title keyword alone. Including "senior" here would false-
+ * flag correctly-passing senior-titled exception jobs.
+ */
+const SENIOR_TITLE_KEYWORDS = ["lead", "manager", "head of", "director", "principal", "staff"];
 const INTERNSHIP_KEYWORDS = ["intern", "internship"];
 
 /**

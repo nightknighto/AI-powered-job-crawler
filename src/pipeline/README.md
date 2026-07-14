@@ -30,7 +30,7 @@ Single source of truth for the LLM filter call. Used by `evaluate.ts` (productio
 | `logTimingAndTokens(response)` | Unified compact timing + token-usage log line |
 | `mergeJobsByUrl(jobs, parsed, mode)` | Re-attach original jobs to LLM output via URL. `mode: 'strict'` throws on unknown/duplicate URLs; `'tolerant'` warns. **Dropped jobs are always non-fatal**: collected into the returned `dropped` array (returned as `{ evaluated, dropped }`) |
 | `runFilterLLMCall(jobs, modelConfig, { mode })` | Build prompt, call Ollama (with `keep_alive`), log timing, parse, merge. Returns `{ aiOutput, dropped, response }` |
-| `runFilterEval(modelKey, goldenDataset)` | High-level: runs `runFilterLLMCall` on the supplied golden dataset in tolerant mode, then adds `compareGolden()` + heuristics. Returns `{ aiOutput, dropped, comparison, heuristics, metrics }`. The caller picks the dataset — combined via `getGoldenDataset()` or a single site via `getGoldenDataset('wuzzuf')` (the `--site` flag). Used by `eval.ts` and `compare-models.ts` |
+| `runFilterEval(modelKey, goldenDataset, prompt?)` | High-level: runs `runFilterLLMCall` on the supplied golden dataset in tolerant mode, then adds golden comparison (**per-category accuracy**) + heuristics. Returns `{ aiOutput, dropped, comparison, heuristics, metrics }`. Signature is unchanged — still takes `GoldenEntry[]` (now the non-generic, rule-tagged case type) — but the **caller** picks the case set from `src/evals/cases/index.ts`: all cases via `getAllCases()`, a single category via `getAllCases(category)` (the `--category <name>` flag), or a cherry-picked set via `getCasesByIds(ids)` (the `--cases id1,id2` flag). Used by `eval.ts`, `compare-models.ts`, and `compare-prompts.ts` |
 
 ### 3. `generate-summary.ts`
 
@@ -56,8 +56,18 @@ crawl() → evaluate() → generateSummary() → reporters.display()
    T[]    EvaluatedJob<T>[]      string            void
 ```
 
-The eval path (`eval.ts`, `compare-models.ts`) calls `runFilterEval` directly and bypasses
-`evaluate` / `generateSummary` / reporters.
+The eval path (`eval.ts`, `compare-models.ts`, `compare-prompts.ts`) calls `runFilterEval` directly and bypasses
+`evaluate` / `generateSummary` / reporters. `runFilterEval`'s signature is unchanged (still takes
+`GoldenEntry[]`), but the `GoldenEntry` type changed in the eval redesign — it's now non-generic
+(plain `BaseJob`, no `<T>`) and rule-tagged (`id`, `category`, `real`, `isolationNote`) instead of
+carrying `expectedReasonKeywords`. Scoring is now per-category accuracy, and the `--site` flag is
+replaced by `--category <name>` / `--cases id1,id2` resolved via `getAllCases()` / `getCasesByIds()`
+in `src/evals/cases/index.ts`.
+
+> **The production pipeline is unchanged by the eval redesign.** `evaluate.ts`, the core of
+> `run-filter.ts` (`runFilterLLMCall`, `mergeJobsByUrl`, `parseLlmOutput`, `logTimingAndTokens`),
+> `generate-summary.ts`, `report-helpers.ts`, `main.ts`, and the verdict cache all behave exactly
+> as before — only the eval/benchmark entry points (`runFilterEval` callers, scoring) moved.
 
 ## Verdict Cache (production only)
 

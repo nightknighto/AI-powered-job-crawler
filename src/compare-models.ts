@@ -1,18 +1,15 @@
 import { modelConfigs, ModelConfigKey } from "./config.js";
+import { CaseCategory, GoldenEntry } from "./types/GoldenEntry.js";
+import { CASE_CATEGORIES, getAllCases, getCasesByIds } from "./evals/cases/index.js";
 import { GoldenComparisonResult } from "./evals/golden.js";
 import { HeuristicResult } from "./evals/structural.js";
 import { writeCompareReport, CompareModelDetail } from "./evals/report-writer.js";
-import { getGoldenDataset, goldenDatasetsBySite, GoldenSiteKey } from "./evals/combined-golden-dataset.js";
 import { runFilterEval } from "./pipeline/run-filter.js";
-import { GoldenEntry } from "./types/GoldenEntry.js";
 
 interface ModelResult {
     modelKey: string;
     modelName: string;
     accuracy: number;
-    passF1: number;
-    failF1: number;
-    potentialMatchF1: number;
     correct: number;
     total: number;
     errors: string[];
@@ -29,16 +26,13 @@ async function evalModel(modelKey: ModelConfigKey, goldenDataset: GoldenEntry[])
         .filter((job) => !job.statusMatch)
         .map((job) => {
             const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;
-            return `  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`;
+            return `  ${job.id} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`;
         });
 
     return {
         modelKey,
         modelName: config.model,
         accuracy: comparison.overallAccuracy,
-        passF1: comparison.classMetrics.PASS?.f1 ?? 0,
-        failF1: comparison.classMetrics.FAIL?.f1 ?? 0,
-        potentialMatchF1: comparison.classMetrics.POTENTIAL_MATCH?.f1 ?? 0,
         correct: comparison.summary.correct,
         total: comparison.summary.total,
         errors,
@@ -49,28 +43,25 @@ async function evalModel(modelKey: ModelConfigKey, goldenDataset: GoldenEntry[])
 }
 
 function printComparison(results: ModelResult[]) {
-    // Sort by PASS F1 (primary metric)
-    const sorted = [...results].sort((a, b) => b.passF1 - a.passF1);
+    // Rank by overall accuracy (primary metric)
+    const sorted = [...results].sort((a, b) => b.accuracy - a.accuracy);
 
     console.log("\n╔══════════════════════════════════════════════════════════════════╗");
     console.log("║                   MODEL COMPARISON RESULTS                      ║");
-    console.log("╠══════════════════════════════════════════════════════════════════╣");
-    console.log("║ Model              │ Accuracy │ PASS F1 │ FAIL F1 │ POT.F1 │ ✓  ║");
-    console.log("╠════════════════════╪══════════╪═════════╪═════════╪════════╪════╣");
+    console.log("╠════════════════════╤══════════╤═════════════════════════════════╣");
+    console.log("║ Model              │ Accuracy │ Correct                          ║");
+    console.log("╠════════════════════╪══════════╪═════════════════════════════════╣");
 
     for (const r of sorted) {
         const rank = r === sorted[0] ? "🥇" : r === sorted[1] ? "🥈" : "🥉";
         console.log(
             `║ ${rank} ${r.modelKey.padEnd(17)}│` +
             ` ${(r.accuracy * 100).toFixed(1).padStart(6)}% │` +
-            ` ${(r.passF1 * 100).toFixed(1).padStart(6)}% │` +
-            ` ${(r.failF1 * 100).toFixed(1).padStart(6)}% │` +
-            ` ${(r.potentialMatchF1 * 100).toFixed(1).padStart(5)}% │` +
-            `${r.correct.toString().padStart(2)}/${r.total} ║`,
+            ` ${r.correct.toString().padStart(2)}/${r.total}                            ║`,
         );
     }
 
-    console.log("╚══════════════════════════════════════════════════════════════════╝");
+    console.log("╚════════════════════╧══════════╧═════════════════════════════════╝");
 
     // Print per-model errors
     for (const r of sorted) {
@@ -84,32 +75,53 @@ function printComparison(results: ModelResult[]) {
         }
     }
 
-    console.log(`\n🏆 Winner: ${sorted[0].modelKey} (${sorted[0].modelName}) with PASS F1 = ${(sorted[0].passF1 * 100).toFixed(1)}%`);
+    console.log(`\n🏆 Winner: ${sorted[0].modelKey} (${sorted[0].modelName}) with accuracy = ${(sorted[0].accuracy * 100).toFixed(1)}%`);
 }
 
 async function main() {
     const models = Object.keys(modelConfigs) as ModelConfigKey[];
     const results: ModelResult[] = [];
 
-    const availableSites = Object.keys(goldenDatasetsBySite).join(", ");
+    const availableCategories = CASE_CATEGORIES.join(", ");
 
-    const siteFlagIdx = process.argv.indexOf("--site");
-    let siteKey: GoldenSiteKey | undefined;
-    if (siteFlagIdx !== -1) {
-        const siteValue = process.argv[siteFlagIdx + 1];
-        if (!siteValue) {
-            console.error(`--site requires a value. Available sites: ${availableSites}`);
+    // Parse --category <name>
+    const categoryFlagIdx = process.argv.indexOf("--category");
+    let category: CaseCategory | undefined;
+    if (categoryFlagIdx !== -1) {
+        const categoryValue = process.argv[categoryFlagIdx + 1];
+        if (!categoryValue) {
+            console.error(`--category requires a value. Available categories: ${availableCategories}`);
             process.exit(1);
         }
-        if (!(siteValue in goldenDatasetsBySite)) {
-            console.error(`Unknown site: ${siteValue}. Available sites: ${availableSites}`);
+        if (!CASE_CATEGORIES.includes(categoryValue as CaseCategory)) {
+            console.error(`Unknown category: ${categoryValue}. Available categories: ${availableCategories}`);
             process.exit(1);
         }
-        siteKey = siteValue as GoldenSiteKey;
+        category = categoryValue as CaseCategory;
     }
 
-    const goldenDataset = getGoldenDataset(siteKey);
-    console.log(`🔄 Running eval for ${models.length} models on ${siteKey ?? "combined"} (${goldenDataset.length} jobs)...\n`);
+    // Parse --cases id1,id2,...
+    const casesFlagIdx = process.argv.indexOf("--cases");
+    let caseIds: string[] | undefined;
+    if (casesFlagIdx !== -1) {
+        const casesValue = process.argv[casesFlagIdx + 1];
+        if (!casesValue) {
+            console.error("--cases requires a comma-separated list of case ids");
+            process.exit(1);
+        }
+        caseIds = casesValue.split(",").map((c) => c.trim());
+    }
+
+    let goldenDataset: GoldenEntry[];
+    try {
+        goldenDataset = caseIds ? getCasesByIds(caseIds) : getAllCases(category);
+    } catch (err) {
+        console.error((err as Error).message);
+        process.exit(1);
+    }
+
+    const scope = caseIds ? `cases: ${caseIds.join(", ")}` : category ? `category: ${category}` : "all categories";
+    console.log(`🔄 Running eval for ${models.length} models on ${scope} (${goldenDataset.length} cases)...\n`);
 
     for (const modelKey of models) {
         const config = modelConfigs[modelKey];
@@ -117,7 +129,7 @@ async function main() {
         try {
             const result = await evalModel(modelKey, goldenDataset);
             results.push(result);
-            console.log(`  → Accuracy: ${(result.accuracy * 100).toFixed(1)}% | PASS F1: ${(result.passF1 * 100).toFixed(1)}% | ${result.correct}/${result.total} correct`);
+            console.log(`  → Accuracy: ${(result.accuracy * 100).toFixed(1)}% | ${result.correct}/${result.total} correct`);
         } catch (err) {
             console.error(`  ❌ Failed: ${err}`);
         }
@@ -129,16 +141,13 @@ async function main() {
         modelKey: r.modelKey,
         modelName: r.modelName,
         accuracy: r.accuracy,
-        passF1: r.passF1,
-        failF1: r.failF1,
-        potentialMatchF1: r.potentialMatchF1,
         correct: r.correct,
         total: r.total,
         comparison: r.comparison,
         heuristics: r.heuristics,
         aiOutputJobs: r.aiOutputJobTitles,
     }));
-    const reportPath = writeCompareReport({ models: details, goldenDataset, site: siteKey });
+    const reportPath = writeCompareReport({ models: details, goldenDataset, category, cases: caseIds });
     console.log(`\n📄 Report saved: ${reportPath}`);
 }
 

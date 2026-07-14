@@ -184,17 +184,19 @@ export interface ModelCallMetrics {
 
 /** Run the full filter eval on a golden dataset for one model.
  *
- * Convenience wrapper used by `src/eval.ts` and `src/compare-models.ts`. Calls
- * {@link runFilterLLMCall} in `'tolerant'` mode on the supplied golden dataset, then runs
- * golden comparison and structural heuristics.
+ * Convenience wrapper used by `src/eval.ts`, `src/compare-models.ts`, and
+ * `src/compare-prompts.ts`. Calls {@link runFilterLLMCall} in `'tolerant'` mode on
+ * the supplied golden cases, then runs golden comparison (per-category accuracy)
+ * and structural heuristics.
  *
- * The caller controls which dataset is evaluated: pass the combined dataset for a full run
- * (via `getGoldenDataset()`) or a single site's dataset (via `getGoldenDataset('wuzzuf')`) —
- * this is how the `--site <name>` CLI flag scopes a run. See
- * `src/evals/combined-golden-dataset.ts`.
+ * The caller controls which cases are evaluated: pass all cases for a full run
+ * (via `getAllCases()`), a single category (via `getAllCases(category)`), or a
+ * cherry-picked set (via `getCasesByIds(ids)`) — this is how the `--category`
+ * and `--cases` CLI flags scope a run. See `src/evals/cases/index.ts`.
  *
  * @param modelKey - The configured model key (entry in `modelConfigs`).
- * @param goldenDataset - The golden dataset to evaluate against (jobs + expected labels).
+ * @param goldenDataset - The golden cases to evaluate against.
+ * @param prompt - Optional prompt override (used by compare-prompts to test variants).
  * @returns The evaluated jobs, golden comparison result, and heuristic results.
  */
 export async function runFilterEval(

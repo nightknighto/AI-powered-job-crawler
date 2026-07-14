@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ModelConfig } from "../config.js";
 import { GoldenComparisonResult } from "./golden.js";
 import { HeuristicResult } from "./structural.js";
-import { GoldenEntry } from "../types/GoldenEntry.js";
+import { CaseCategory, GoldenEntry } from "../types/GoldenEntry.js";
 import { ModelCallMetrics } from "../pipeline/run-filter.js";
 
 const EVAL_RESULTS_DIR = "eval-results";
@@ -14,17 +14,16 @@ export interface EvalReportArgs {
     comparison: GoldenComparisonResult;
     heuristics: HeuristicResult[];
     goldenDataset: GoldenEntry[];
-    /** Site scope when the run was filtered via `--site <name>`. Omit for a combined run. */
-    site?: string;
+    /** Category scope when the run was filtered via `--category <name>`. */
+    category?: CaseCategory;
+    /** Case IDs when the run was cherry-picked via `--cases id1,id2`. */
+    cases?: string[];
 }
 
 export interface CompareModelDetail {
     modelKey: string;
     modelName: string;
     accuracy: number;
-    passF1: number;
-    failF1: number;
-    potentialMatchF1: number;
     correct: number;
     total: number;
     comparison: GoldenComparisonResult;
@@ -35,16 +34,13 @@ export interface CompareModelDetail {
 export interface CompareReportArgs {
     models: CompareModelDetail[];
     goldenDataset: GoldenEntry[];
-    /** Site scope when the run was filtered via `--site <name>`. Omit for a combined run. */
-    site?: string;
+    category?: CaseCategory;
+    cases?: string[];
 }
 
 export interface PromptCompareDetail {
     variantName: string;
     accuracy: number;
-    passF1: number;
-    failF1: number;
-    potentialMatchF1: number;
     correct: number;
     total: number;
     comparison: GoldenComparisonResult;
@@ -58,7 +54,8 @@ export interface PromptCompareReportArgs {
     modelName: string;
     variants: PromptCompareDetail[];
     goldenDataset: GoldenEntry[];
-    site?: string;
+    category?: CaseCategory;
+    cases?: string[];
 }
 
 function formatTimestamp(): string {
@@ -77,15 +74,28 @@ function ensureEvalResultsDir(): string {
     return dir;
 }
 
-function renderClassMetricsTable(classMetrics: GoldenComparisonResult["classMetrics"]): string {
+/** Human-readable label for the dataset scope, e.g. "category: experience". */
+function scopeLabel(args: { category?: CaseCategory; cases?: string[] }): string {
+    if (args.cases && args.cases.length > 0) return `cases: ${args.cases.join(", ")}`;
+    if (args.category) return `category: ${args.category}`;
+    return "all categories";
+}
+
+/** Filename suffix for the dataset scope. */
+function scopeSuffix(args: { category?: CaseCategory; cases?: string[] }): string {
+    if (args.cases && args.cases.length > 0) return `_cases-${args.cases.length}`;
+    if (args.category) return `_category-${args.category}`;
+    return "";
+}
+
+function renderCategoryAccuracyTable(categoryMetrics: GoldenComparisonResult["categoryMetrics"]): string {
     const lines: string[] = [
-        "| Class | Precision | Recall | F1 | Support |",
-        "|-------|-----------|--------|----|---------|",
+        "| Category | Accuracy | Correct/Total |",
+        "|----------|----------|---------------|",
     ];
-    for (const [status, m] of Object.entries(classMetrics)) {
-        lines.push(
-            `| ${status} | ${(m.precision * 100).toFixed(1)}% | ${(m.recall * 100).toFixed(1)}% | ${(m.f1 * 100).toFixed(1)}% | ${m.support} |`,
-        );
+    for (const [category, m] of Object.entries(categoryMetrics)) {
+        if (m.total === 0) continue;
+        lines.push(`| ${category} | ${(m.accuracy * 100).toFixed(1)}% | ${m.correct}/${m.total} |`);
     }
     return lines.join("\n");
 }
@@ -106,26 +116,23 @@ function renderHeuristics(heuristics: HeuristicResult[]): string {
     return lines.join("\n");
 }
 
-function renderPerJobBreakdown(comparison: GoldenComparisonResult): string {
+function renderPerCaseBreakdown(comparison: GoldenComparisonResult): string {
     const lines: string[] = [];
     for (const job of comparison.perJob) {
         const icon = job.statusMatch ? "✅" : "❌";
+        const realTag = job.real ? "" : " [SYNTHETIC]";
         const droppedTag = job.dropped ? " **[DROPPED]**" : "";
         const actualDisplay = job.dropped ? "**[DROPPED]**" : job.actualStatus;
-        lines.push(`### ${icon} #${job.jobIndex}: ${job.jobTitle}${droppedTag}`);
+        lines.push(`### ${icon} \`${job.id}\`${realTag}${droppedTag}: ${job.jobTitle}`);
         lines.push("");
+        lines.push(`- **Category:** ${job.category}`);
         lines.push(`- **Expected:** ${job.expectedStatus} | **Got:** ${actualDisplay}`);
         if (job.dropped) {
-            lines.push(`- **⚠️ Job was not returned by the AI**`);
+            lines.push(`- **⚠️ Job was not returned by the model**`);
         }
+        lines.push(`- **Isolates:** ${job.isolationNote}`);
         if (job.reasonText) {
-            lines.push(`- **Reason:** "${job.reasonText}"`);
-        }
-        if (job.matchedKeywords.length > 0) {
-            lines.push(`- **Matched keywords:** ${job.matchedKeywords.join(", ")}`);
-        }
-        if (job.unmatchedKeywords.length > 0) {
-            lines.push(`- **Unmatched keywords:** ${job.unmatchedKeywords.join(", ")}`);
+            lines.push(`- **Model reason** *(inspection only — never scored)*: "${job.reasonText}"`);
         }
         lines.push("");
     }
@@ -141,17 +148,17 @@ function renderEvalSection(args: EvalReportArgs): string {
         "",
         `**Accuracy:** ${(comparison.overallAccuracy * 100).toFixed(1)}% (${comparison.summary.correct}/${comparison.summary.total}) | **Threshold:** ${(threshold * 100).toFixed(0)}% → ${passed ? "✅ PASS" : "❌ FAIL"}`,
         "",
-        "#### Per-Class Metrics",
+        "#### Per-Category Accuracy",
         "",
-        renderClassMetricsTable(comparison.classMetrics),
+        renderCategoryAccuracyTable(comparison.categoryMetrics),
         "",
         "#### Structural Heuristics",
         "",
         renderHeuristics(heuristics),
         "",
-        "#### Per-Job Breakdown",
+        "#### Per-Case Breakdown",
         "",
-        renderPerJobBreakdown(comparison),
+        renderPerCaseBreakdown(comparison),
     ];
     return lines.join("\n");
 }
@@ -159,8 +166,7 @@ function renderEvalSection(args: EvalReportArgs): string {
 export function writeEvalReport(args: EvalReportArgs): string {
     const dir = ensureEvalResultsDir();
     const ts = formatTimestamp();
-    const siteSuffix = args.site ? `_site-${args.site}` : "";
-    const filename = `${ts}_${args.modelKey}${siteSuffix}.md`;
+    const filename = `${ts}_${args.modelKey}${scopeSuffix(args)}.md`;
     const filepath = join(dir, filename);
 
     const threshold = 0.8;
@@ -170,24 +176,24 @@ export function writeEvalReport(args: EvalReportArgs): string {
         `# Eval: ${args.modelKey}`,
         "",
         `**Date:** ${formatTimestampReadable()} | **Model:** ${args.modelConfig.model} | **Temperature:** ${args.modelConfig.temperature}`,
-        `**Site:** ${args.site ?? "combined"} (${args.goldenDataset.length} jobs)`,
+        `**Scope:** ${scopeLabel(args)} (${args.goldenDataset.length} cases)`,
         "",
         "## Summary",
         "",
         `- **Accuracy:** ${(args.comparison.overallAccuracy * 100).toFixed(1)}% (${args.comparison.summary.correct}/${args.comparison.summary.total})`,
         `- **Threshold:** ${(threshold * 100).toFixed(0)}% → ${passed ? "✅ PASS" : "❌ FAIL"}`,
         "",
-        "## Per-Class Metrics",
+        "## Per-Category Accuracy",
         "",
-        renderClassMetricsTable(args.comparison.classMetrics),
+        renderCategoryAccuracyTable(args.comparison.categoryMetrics),
         "",
         "## Structural Heuristics",
         "",
         renderHeuristics(args.heuristics),
         "",
-        "## Per-Job Breakdown",
+        "## Per-Case Breakdown",
         "",
-        renderPerJobBreakdown(args.comparison),
+        renderPerCaseBreakdown(args.comparison),
     ].join("\n") + "\n";
 
     writeFileSync(filepath, content, "utf-8");
@@ -197,23 +203,21 @@ export function writeEvalReport(args: EvalReportArgs): string {
 export function writeCompareReport(args: CompareReportArgs): string {
     const dir = ensureEvalResultsDir();
     const ts = formatTimestamp();
-    const siteSuffix = args.site ? `_site-${args.site}` : "";
-    const filename = `${ts}_compare${siteSuffix}.md`;
+    const filename = `${ts}_compare${scopeSuffix(args)}.md`;
     const filepath = join(dir, filename);
 
-    const sorted = [...args.models].sort((a, b) => b.passF1 - a.passF1);
+    // Rank by overall accuracy (primary metric)
+    const sorted = [...args.models].sort((a, b) => b.accuracy - a.accuracy);
 
     // Rankings table
     const rankings: string[] = [
-        "| Rank | Model | Accuracy | PASS F1 | FAIL F1 | POT.M F1 | Correct |",
-        "|------|-------|----------|---------|---------|----------|---------|",
+        "| Rank | Model | Accuracy | Correct |",
+        "|------|-------|----------|---------|",
     ];
     for (let i = 0; i < sorted.length; i++) {
         const m = sorted[i];
         const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
-        rankings.push(
-            `| ${medal} | ${m.modelKey} | ${(m.accuracy * 100).toFixed(1)}% | ${(m.passF1 * 100).toFixed(1)}% | ${(m.failF1 * 100).toFixed(1)}% | ${(m.potentialMatchF1 * 100).toFixed(1)}% | ${m.correct}/${m.total} |`,
-        );
+        rankings.push(`| ${medal} | ${m.modelKey} | ${(m.accuracy * 100).toFixed(1)}% | ${m.correct}/${m.total} |`);
     }
 
     // Per-model details
@@ -233,10 +237,10 @@ export function writeCompareReport(args: CompareReportArgs): string {
     const content = [
         `# Model Comparison`,
         "",
-        `**Date:** ${formatTimestampReadable()} | **Models:** ${args.models.length} | **Jobs:** ${args.goldenDataset.length}`,
-        `**Site:** ${args.site ?? "combined"}`,
+        `**Date:** ${formatTimestampReadable()} | **Models:** ${args.models.length} | **Cases:** ${args.goldenDataset.length}`,
+        `**Scope:** ${scopeLabel(args)}`,
         "",
-        "## Rankings (by PASS F1)",
+        "## Rankings (by Accuracy)",
         "",
         ...rankings,
         "",
@@ -256,25 +260,23 @@ export function writeCompareReport(args: CompareReportArgs): string {
 export function writePromptCompareReport(args: PromptCompareReportArgs): string {
     const dir = ensureEvalResultsDir();
     const ts = formatTimestamp();
-    const siteSuffix = args.site ? `_site-${args.site}` : "";
-    const filename = `${ts}_prompt-compare_${args.modelKey}${siteSuffix}.md`;
+    const filename = `${ts}_prompt-compare_${args.modelKey}${scopeSuffix(args)}.md`;
     const filepath = join(dir, filename);
 
-    const sorted = [...args.variants].sort((a, b) => b.passF1 - a.passF1);
+    // Rank by overall accuracy
+    const sorted = [...args.variants].sort((a, b) => b.accuracy - a.accuracy);
 
     // Rankings table with timing/token columns
     const rankings: string[] = [
-        "| Rank | Prompt | PASS F1 | FAIL F1 | P.M. F1 | Accuracy | Correct | Time (s) | Out Tok |",
-        "|------|--------|---------|---------|---------|----------|---------|----------|---------|",
+        "| Rank | Prompt | Accuracy | Correct | Time (s) | Out Tok |",
+        "|------|--------|----------|---------|----------|---------|",
     ];
     for (let i = 0; i < sorted.length; i++) {
         const v = sorted[i];
         const medal = medalForIndex(i);
         const time = (v.metrics.totalDurationMs / 1_000).toFixed(1);
         const label = v.variantName === "filter" ? "filter (base)" : v.variantName;
-        rankings.push(
-            `| ${medal} | ${label} | ${(v.passF1 * 100).toFixed(1)}% | ${(v.failF1 * 100).toFixed(1)}% | ${(v.potentialMatchF1 * 100).toFixed(1)}% | ${(v.accuracy * 100).toFixed(1)}% | ${v.correct}/${v.total} | ${time} | ${v.metrics.outputTokens} |`,
-        );
+        rankings.push(`| ${medal} | ${label} | ${(v.accuracy * 100).toFixed(1)}% | ${v.correct}/${v.total} | ${time} | ${v.metrics.outputTokens} |`);
     }
 
     // Timing/token summary table
@@ -310,23 +312,23 @@ export function writePromptCompareReport(args: PromptCompareReportArgs): string 
         const tokensBlock = `**Tokens:** ${v.metrics.inputTokens} in / ${v.metrics.outputTokens} out`;
 
         const section = [
-            `### ${medalForIndex(i)} ${label} (PASS F1: ${(v.passF1 * 100).toFixed(1)}%, Accuracy: ${(v.accuracy * 100).toFixed(1)}%)`,
+            `### ${medalForIndex(i)} ${label} (Accuracy: ${(v.accuracy * 100).toFixed(1)}%)`,
             "",
             metricsBlock,
             "",
             tokensBlock,
             "",
-            "#### Per-Class Metrics",
+            "#### Per-Category Accuracy",
             "",
-            renderClassMetricsTable(v.comparison.classMetrics),
+            renderCategoryAccuracyTable(v.comparison.categoryMetrics),
             "",
             "#### Structural Heuristics",
             "",
             renderHeuristics(v.heuristics),
             "",
-            "#### Per-Job Breakdown",
+            "#### Per-Case Breakdown",
             "",
-            renderPerJobBreakdown(v.comparison),
+            renderPerCaseBreakdown(v.comparison),
         ].join("\n");
         perVariantSections.push(section);
         if (i < sorted.length - 1) {
@@ -340,10 +342,10 @@ export function writePromptCompareReport(args: PromptCompareReportArgs): string 
     const content = [
         `# Prompt Comparison: ${args.modelKey}`,
         "",
-        `**Date:** ${formatTimestampReadable()} | **Model:** ${args.modelName} | **Jobs:** ${args.goldenDataset.length}`,
-        `**Site:** ${args.site ?? "combined"} | **Variants:** ${args.variants.length} (baseline + ${args.variants.length - 1} custom)`,
+        `**Date:** ${formatTimestampReadable()} | **Model:** ${args.modelName} | **Cases:** ${args.goldenDataset.length}`,
+        `**Scope:** ${scopeLabel(args)} | **Variants:** ${args.variants.length} (baseline + ${args.variants.length - 1} custom)`,
         "",
-        "## Rankings (by PASS F1)",
+        "## Rankings (by Accuracy)",
         "",
         rankings.join("\n"),
         "",
@@ -381,9 +383,7 @@ function renderPromptDisagreements(
         const job = goldenDataset[i];
         const expected = sortedVariants[0].comparison.perJob[i]?.expectedStatus ?? "?";
         const variantCells = sortedVariants.map((v) => v.comparison.perJob[i]?.actualStatus ?? "?");
-        disagreementRows.push(
-            `| #${i + 1} ${job.job.jobTitle} | ${expected} | ${variantCells.join(" | ")} |`,
-        );
+        disagreementRows.push(`| \`${job.id}\` ${job.job.jobTitle} | ${expected} | ${variantCells.join(" | ")} |`);
     }
 
     if (disagreementRows.length === 0) {
@@ -393,8 +393,8 @@ function renderPromptDisagreements(
     const header = sortedVariants.map((v) => v.variantName).join(" | ");
     const separator = "|" + sortedVariants.map(() => "---|").join("");
     return [
-        `| Job | Expected | ${header} |`,
-        `|-----|----------|${separator}`,
+        `| Case | Expected | ${header} |`,
+        `|------|----------|${separator}`,
         ...disagreementRows,
     ].join("\n");
 }
@@ -414,9 +414,7 @@ function renderDisagreements(args: CompareReportArgs): string {
         const expected = args.models[0].comparison.perJob[i]?.expectedStatus ?? "?";
         const modelCells = args.models.map((m) => m.comparison.perJob[i]?.actualStatus ?? "?");
 
-        disagreementRows.push(
-            `| #${i + 1} ${job.job.jobTitle} | ${expected} | ${modelCells.join(" | ")} |`,
-        );
+        disagreementRows.push(`| \`${job.id}\` ${job.job.jobTitle} | ${expected} | ${modelCells.join(" | ")} |`);
     }
 
     if (disagreementRows.length === 0) {
@@ -425,8 +423,8 @@ function renderDisagreements(args: CompareReportArgs): string {
 
     const header = args.models.map((m) => m.modelKey).join(" | ");
     const lines: string[] = [
-        `| Job | Expected | ${header} |`,
-        `|-----|----------|${args.models.map(() => "----------|").join("")}`,
+        `| Case | Expected | ${header} |`,
+        `|------|----------|${args.models.map(() => "----------|").join("")}`,
         ...disagreementRows,
     ];
     return lines.join("\n");

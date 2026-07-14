@@ -45,7 +45,7 @@ flowchart LR
   end
 
   subgraph Eval System
-    E[Golden Dataset<br/>54 labeled jobs] --> F[Compare Engine<br/>Precision/Recall/F1]
+    E[Case Library<br/>rule-tagged cases] --> F[Compare Engine<br/>per-category accuracy]
     G[Structural Heuristics<br/>6 checks] --> F
   end
 
@@ -95,14 +95,14 @@ and also scopes the LLM summary to just the newly-evaluated passing jobs. The fi
 
 ## Evaluation System
 
-- **Unified golden dataset**: 54 hand-labeled jobs across Wuzzuf (40) and Indeed (14) for cross-site compatibility
-  - 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH
-  - Aggregated by [`src/evals/combined-golden-dataset.ts`](src/evals/combined-golden-dataset.ts) via the `goldenDatasetsBySite` registry from per-site files in `src/sites/<site>/evals/`
-  - Each entry is a `GoldenEntry<T extends BaseJob>` (schema-agnostic, works with all sites)
-  - Scope a run to a single site with `--site <name>` (e.g. `pnpm eval qwenReason --site indeed`)
-- **Metrics**: Precision, recall, F1 per class — primary metric is PASS F1 (minority class)
+- **Rule-tagged case library**: ~22 hand-labeled cases, ~80% sourced from **real crawled jobs** (`storage/datasets/*.json`), organized **one file per filter rule** under [`src/evals/cases/`](src/evals/cases/)
+  - Categories: `title-seniority`, `internship`, `tech-stack`, `role-type`, `experience`, `location`, `ambiguous` (POTENTIAL_MATCH), `multi-cause` (compound failures)
+  - Each case is **single-causal by construction** — it isolates exactly one filter rule (every other filter kept green), so per-category accuracy pinpoints which rules a model mishandles
+  - Each entry is a `GoldenEntry` (non-generic) with a signal-descriptive `id` (e.g. `exp-threshold-4yr-fail`), a `category`, a `real` flag, the `job`, the `expectedStatus`, and an `isolationNote`
+  - Scope a run with `--category <name>` (one rule) or `--cases id1,id2,...` (cherry-pick)
+- **Metrics**: overall accuracy + **per-category accuracy**. No F1 / precision / recall. The model's `reason[]` text is kept in the output for inspection but is never keyword-matched or scored.
 - **Structural heuristics**: 6 checks catch dropped jobs, invalid statuses, empty reasons, etc.
-- **Threshold**: 80% accuracy target
+- **Threshold**: 80% overall accuracy target
 - **Shared filter resources**: Evaluation uses the shared filter prompt ([`src/pipeline/prompts.ts`](src/pipeline/prompts.ts) → `src/pipeline/prompts/filter.md`) and the shared `jobEvaluationSchema` ([`src/types/evaluated-job.ts`](src/types/evaluated-job.ts)) — no per-site filter prompt or schema
 
 See [`src/evals/README.md`](src/evals/README.md) for details.
@@ -142,9 +142,9 @@ export const shared = {
 |--------|---------|-------------|
 | `pnpm start <site>` | `tsx src/main.ts <site>` | Full pipeline for one site. Also accepts `all` (every site, unified report) or a comma-list like `wuzzuf,indeed`. |
 | `pnpm crawl <site>` | `tsx src/crawl-dev.ts <site>` | **Crawl-only dev tool.** Runs ONLY the crawler and dumps raw jobs to `reports/crawl-<site>-<ts>.json`, skipping the LLM filter/summary/reporters. Accepts the same `all` / comma-list args as `pnpm start`. Add `--verbose` to print the full JSON of the first 10 jobs per site. Use when iterating on a crawler. |
-| `pnpm eval <model>` | `tsx src/eval.ts` | Run golden dataset eval with a specific model. Add `--site <name>` to scope to one site |
-| `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by PASS F1. Add `--site <name>` to scope to one site |
-| `pnpm compare-prompts <model>` | `tsx src/compare-prompts.ts` | Compare prompt variants for a model. Add `--variants v1,v2` and/or `--site <name>`. |
+| `pnpm eval <model>` | `tsx src/eval.ts` | Run the eval case library with a specific model. Add `--category <name>` to scope to one rule, or `--cases id1,id2` to cherry-pick. Exit 1 below 80% accuracy. |
+| `pnpm compare` | `tsx src/compare-models.ts` | Benchmark all configured models, rank by overall accuracy. Accepts `--category` / `--cases`. |
+| `pnpm compare-prompts <model>` | `tsx src/compare-prompts.ts` | Compare prompt variants for a model, rank by overall accuracy. Add `--variants v1,v2` and/or `--category` / `--cases`. |
 | `pnpm preview-reporter <names...>` | `tsx src/reporters/preview.ts` | Preview reporters with sample data |
 | `pnpm check` | `tsc --noEmit` | Type-check without emitting |
 
@@ -154,13 +154,15 @@ export const shared = {
 src/
   main.ts              — Entry point, orchestrates the full pipeline
   config.ts            — Model configs (including reporter selection), shared settings
-  eval.ts              — Single-model golden dataset evaluation
+  eval.ts              — Single-model eval runner (--category / --cases scope)
   compare-models.ts    — Multi-model benchmark comparison
+  compare-prompts.ts   — Prompt variant comparison runner
   types/               — Shared TypeScript interfaces and Zod schemas
   pipeline/            — Crawl, evaluate, summarize stages + deterministic table helpers
   reporters/           — Composable output system (cli-table, cli-card, cli-summary, html, markdown)
-  evals/               — Golden dataset engine, structural heuristics, report writer
-  sites/wuzzuf/        — Wuzzuf site config, crawler, prompts, eval data
+  evals/               — Rule-tagged case library (cases/), comparison engine, structural heuristics, report writer
+  evals/cases/         — One file per filter rule (title-seniority, internship, tech-stack, role-type, experience, location, ambiguous, multi-cause)
+  sites/wuzzuf/        — Wuzzuf site config, crawler, prompts
   helpers/             — Utility functions
   state/               — Persistent verdict cache (production pipeline)
 eval-results/          — Generated eval/compare reports (gitignored)

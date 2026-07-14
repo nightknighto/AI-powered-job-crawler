@@ -1,18 +1,15 @@
 import { modelConfigs, ModelConfigKey } from "./config.js";
-import { getGoldenDataset, goldenDatasetsBySite, GoldenSiteKey } from "./evals/combined-golden-dataset.js";
+import { CaseCategory, GoldenEntry } from "./types/GoldenEntry.js";
+import { CASE_CATEGORIES, getAllCases, getCasesByIds } from "./evals/cases/index.js";
 import { GoldenComparisonResult } from "./evals/golden.js";
 import { HeuristicResult } from "./evals/structural.js";
 import { writePromptCompareReport, PromptCompareDetail } from "./evals/report-writer.js";
 import { runFilterEval, ModelCallMetrics } from "./pipeline/run-filter.js";
 import { loadPromptVariants } from "./pipeline/prompts/prompts.js";
-import { GoldenEntry } from "./types/GoldenEntry.js";
 
 interface PromptVariantResult {
     variantName: string;
     accuracy: number;
-    passF1: number;
-    failF1: number;
-    potentialMatchF1: number;
     correct: number;
     total: number;
     errors: string[];
@@ -28,22 +25,18 @@ async function evalVariant(
     goldenDataset: GoldenEntry[],
     prompt: string,
 ): Promise<PromptVariantResult> {
-    const config = modelConfigs[modelKey];
     const { comparison, heuristics, aiOutput, metrics } = await runFilterEval(modelKey, goldenDataset, prompt);
 
     const errors: string[] = comparison.perJob
         .filter((job) => !job.statusMatch)
         .map((job) => {
             const actualDisplay = job.dropped ? "[DROPPED]" : job.actualStatus;
-            return `  #${job.jobIndex} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`;
+            return `  ${job.id} ${job.jobTitle}: expected ${job.expectedStatus}, got ${actualDisplay}`;
         });
 
     return {
         variantName,
         accuracy: comparison.overallAccuracy,
-        passF1: comparison.classMetrics.PASS?.f1 ?? 0,
-        failF1: comparison.classMetrics.FAIL?.f1 ?? 0,
-        potentialMatchF1: comparison.classMetrics.POTENTIAL_MATCH?.f1 ?? 0,
         correct: comparison.summary.correct,
         total: comparison.summary.total,
         errors,
@@ -55,13 +48,13 @@ async function evalVariant(
 }
 
 function printComparison(results: PromptVariantResult[]) {
-    const sorted = [...results].sort((a, b) => b.passF1 - a.passF1);
+    const sorted = [...results].sort((a, b) => b.accuracy - a.accuracy);
 
-    console.log("\n╔══════════════════════════════════════════════════════════════════════════╗");
-    console.log("║                     PROMPT COMPARISON RESULTS                            ║");
-    console.log("╠════════════════════╪══════════╪═════════╪═════════╪════════╪══════╪══════╪════════╣");
-    console.log("║ Prompt             │ Accuracy │ PASS F1 │ FAIL F1 │ P.M.F1 │ ✓    │ Time │ OutTok ║");
-    console.log("╠════════════════════╪══════════╪═════════╪═════════╪════════╪══════╪══════╪════════╣");
+    console.log("\n╔══════════════════════════════════════════════════════════════════════════════╗");
+    console.log("║                       PROMPT COMPARISON RESULTS                              ║");
+    console.log("╠════════════════════╤══════════╤════════════════════╤════════╤═══════════════════╣");
+    console.log("║ Prompt             │ Accuracy │ Correct            │ Time   │ Out Tok           ║");
+    console.log("╠════════════════════╪══════════╪════════════════════╪════════╪═══════════════════╣");
 
     for (const r of sorted) {
         const rank = r === sorted[0] ? "🥇" : r === sorted[1] ? "🥈" : "🥉";
@@ -70,17 +63,14 @@ function printComparison(results: PromptVariantResult[]) {
         const outputTokens = r.metrics.outputTokens.toString();
         console.log(
             `║ ${rank} ${label.padEnd(18)}│` +
-            `${(r.accuracy * 100).toFixed(1).padStart(6)}% │` +
-            `${(r.passF1 * 100).toFixed(1).padStart(6)}% │` +
-            `${(r.failF1 * 100).toFixed(1).padStart(6)}% │` +
-            `${(r.potentialMatchF1 * 100).toFixed(1).padStart(5)}% │` +
-            `${r.correct.toString().padStart(2)}/${r.total} │` +
-            `${time.padStart(5)}s │` +
-            `${outputTokens.padStart(6)} ║`,
+            ` ${(r.accuracy * 100).toFixed(1).padStart(6)}% │` +
+            ` ${r.correct.toString().padStart(2)}/${r.total}`.padEnd(20) +
+            `│${time.padStart(7)}s│` +
+            `${outputTokens.padStart(17)} ║`,
         );
     }
 
-    console.log("╚════════════════════╧══════════╧═════════╧═════════╧════════╧══════╧══════╧════════╝");
+    console.log("╚════════════════════╧══════════╧════════════════════╧════════╧═══════════════════╝");
 
     for (const r of sorted) {
         const label = r.variantName === "filter" ? "filter (base)" : r.variantName;
@@ -94,38 +84,62 @@ function printComparison(results: PromptVariantResult[]) {
         }
     }
 
-    console.log(`\n🏆 Best prompt: ${sorted[0].variantName} with PASS F1 = ${(sorted[0].passF1 * 100).toFixed(1)}%`);
+    console.log(`\n🏆 Best prompt: ${sorted[0].variantName} with accuracy = ${(sorted[0].accuracy * 100).toFixed(1)}%`);
 }
 
 async function main() {
     const modelArg = process.argv[2] as ModelConfigKey | undefined;
     const availableModels = Object.keys(modelConfigs).join(", ");
-    const availableSites = Object.keys(goldenDatasetsBySite).join(", ");
+    const availableCategories = CASE_CATEGORIES.join(", ");
 
     if (!modelArg || !(modelArg in modelConfigs)) {
-        console.error(`Usage: pnpm compare-prompts <model> [--site <site>] [--variants v1,v2,...]\nAvailable models: ${availableModels}\nAvailable sites:  ${availableSites}`);
+        console.error(
+            `Usage: pnpm compare-prompts <model> [--category <name>] [--cases id1,id2,...] [--variants v1,v2,...]\n` +
+            `Available models: ${availableModels}\n` +
+            `Available categories: ${availableCategories}`,
+        );
         process.exit(1);
     }
 
     const modelKey = modelArg as ModelConfigKey;
     const modelConfig = modelConfigs[modelKey];
 
-    const siteFlagIdx = process.argv.indexOf("--site");
-    let siteKey: GoldenSiteKey | undefined;
-    if (siteFlagIdx !== -1) {
-        const siteValue = process.argv[siteFlagIdx + 1];
-        if (!siteValue) {
-            console.error(`--site requires a value. Available sites: ${availableSites}`);
+    // Parse --category <name>
+    const categoryFlagIdx = process.argv.indexOf("--category");
+    let category: CaseCategory | undefined;
+    if (categoryFlagIdx !== -1) {
+        const categoryValue = process.argv[categoryFlagIdx + 1];
+        if (!categoryValue) {
+            console.error(`--category requires a value. Available categories: ${availableCategories}`);
             process.exit(1);
         }
-        if (!(siteValue in goldenDatasetsBySite)) {
-            console.error(`Unknown site: ${siteValue}. Available sites: ${availableSites}`);
+        if (!CASE_CATEGORIES.includes(categoryValue as CaseCategory)) {
+            console.error(`Unknown category: ${categoryValue}. Available categories: ${availableCategories}`);
             process.exit(1);
         }
-        siteKey = siteValue as GoldenSiteKey;
+        category = categoryValue as CaseCategory;
     }
 
-    const goldenDataset = getGoldenDataset(siteKey);
+    // Parse --cases id1,id2,...
+    const casesFlagIdx = process.argv.indexOf("--cases");
+    let caseIds: string[] | undefined;
+    if (casesFlagIdx !== -1) {
+        const casesValue = process.argv[casesFlagIdx + 1];
+        if (!casesValue) {
+            console.error("--cases requires a comma-separated list of case ids");
+            process.exit(1);
+        }
+        caseIds = casesValue.split(",").map((c) => c.trim());
+    }
+
+    let goldenDataset: GoldenEntry[];
+    try {
+        goldenDataset = caseIds ? getCasesByIds(caseIds) : getAllCases(category);
+    } catch (err) {
+        console.error((err as Error).message);
+        process.exit(1);
+    }
+
     const allVariants = loadPromptVariants();
 
     // Parse --variants filter (comma-separated, default: all custom variants)
@@ -158,8 +172,9 @@ async function main() {
     }
 
     const variantNames = promptVariants.map((v) => v.name === "filter" ? "filter (base)" : v.name);
+    const scope = caseIds ? `cases: ${caseIds.join(", ")}` : category ? `category: ${category}` : "all categories";
     console.log(`🔄 Running prompt comparison for ${modelConfig.model}...`);
-    console.log(`   Dataset: ${siteKey ?? "combined"} (${goldenDataset.length} jobs)`);
+    console.log(`   Dataset: ${scope} (${goldenDataset.length} cases)`);
     console.log(`   Variants: ${variantNames.join(", ")}\n`);
 
     const results: PromptVariantResult[] = [];
@@ -170,7 +185,7 @@ async function main() {
         try {
             const result = await evalVariant(modelKey, name, goldenDataset, prompt);
             results.push(result);
-            console.log(`  → Accuracy: ${(result.accuracy * 100).toFixed(1)}% | PASS F1: ${(result.passF1 * 100).toFixed(1)}% | ${result.correct}/${result.total} correct | ${(result.metrics.totalDurationMs / 1000).toFixed(1)}s`);
+            console.log(`  → Accuracy: ${(result.accuracy * 100).toFixed(1)}% | ${result.correct}/${result.total} correct | ${(result.metrics.totalDurationMs / 1000).toFixed(1)}s`);
         } catch (err) {
             console.error(`  ❌ Failed: ${err}`);
         }
@@ -186,9 +201,6 @@ async function main() {
     const details: PromptCompareDetail[] = results.map((r) => ({
         variantName: r.variantName,
         accuracy: r.accuracy,
-        passF1: r.passF1,
-        failF1: r.failF1,
-        potentialMatchF1: r.potentialMatchF1,
         correct: r.correct,
         total: r.total,
         comparison: r.comparison,
@@ -202,7 +214,8 @@ async function main() {
         modelName: modelConfig.model,
         variants: details,
         goldenDataset,
-        site: siteKey,
+        category,
+        cases: caseIds,
     });
     console.log(`\n📄 Report saved: ${reportPath}`);
 }

@@ -1,4 +1,5 @@
-import { getGoldenDataset, goldenDatasetsBySite, GoldenSiteKey } from "./evals/combined-golden-dataset.js";
+import { CaseCategory, GoldenEntry } from "./types/GoldenEntry.js";
+import { CASE_CATEGORIES, getAllCases, getCasesByIds } from "./evals/cases/index.js";
 import { modelConfigs, ModelConfigKey } from "./config.js";
 import { printGoldenResults } from "./evals/golden.js";
 import { logHeuristicResults } from "./evals/structural.js";
@@ -8,36 +9,65 @@ import { runFilterEval } from "./pipeline/run-filter.js";
 const modelArg = process.argv[2] as ModelConfigKey | undefined;
 const printFailedOnlyArg = process.argv.includes("--print-failed-only");
 
-const availableSites = Object.keys(goldenDatasetsBySite).join(", ");
+const availableCategories = CASE_CATEGORIES.join(", ");
 
 if (!modelArg || !(modelArg in modelConfigs)) {
     const availableModels = Object.keys(modelConfigs).join(", ");
-    console.error(`Usage: pnpm eval <model> [--site <site>] [--print-failed-only]\nAvailable models: ${availableModels}\nAvailable sites:  ${availableSites}`);
+    console.error(
+        `Usage: pnpm eval <model> [--category <name>] [--cases id1,id2,...] [--print-failed-only]\n` +
+        `Available models: ${availableModels}\n` +
+        `Available categories: ${availableCategories}`,
+    );
     process.exit(1);
 }
 
 const validModelKey = modelArg;
 const modelConfig = modelConfigs[validModelKey];
 
-const siteFlagIdx = process.argv.indexOf("--site");
-let siteKey: GoldenSiteKey | undefined;
-if (siteFlagIdx !== -1) {
-    const siteValue = process.argv[siteFlagIdx + 1];
-    if (!siteValue) {
-        console.error(`--site requires a value. Available sites: ${availableSites}`);
+// Parse --category <name> (scope to one rule file)
+const categoryFlagIdx = process.argv.indexOf("--category");
+let category: CaseCategory | undefined;
+if (categoryFlagIdx !== -1) {
+    const categoryValue = process.argv[categoryFlagIdx + 1];
+    if (!categoryValue) {
+        console.error(`--category requires a value. Available categories: ${availableCategories}`);
         process.exit(1);
     }
-    if (!(siteValue in goldenDatasetsBySite)) {
-        console.error(`Unknown site: ${siteValue}. Available sites: ${availableSites}`);
+    if (!CASE_CATEGORIES.includes(categoryValue as CaseCategory)) {
+        console.error(`Unknown category: ${categoryValue}. Available categories: ${availableCategories}`);
         process.exit(1);
     }
-    siteKey = siteValue as GoldenSiteKey;
+    category = categoryValue as CaseCategory;
 }
 
-const goldenDataset = getGoldenDataset(siteKey);
+// Parse --cases id1,id2,... (cherry-pick specific cases by ID)
+const casesFlagIdx = process.argv.indexOf("--cases");
+let caseIds: string[] | undefined;
+if (casesFlagIdx !== -1) {
+    const casesValue = process.argv[casesFlagIdx + 1];
+    if (!casesValue) {
+        console.error("--cases requires a comma-separated list of case ids (e.g. --cases exp-threshold-4yr-fail,role-qa-junior-fail)");
+        process.exit(1);
+    }
+    caseIds = casesValue.split(",").map((c) => c.trim());
+}
+
+// Resolve the golden case set: start from all (or one category), then narrow by IDs if present.
+let goldenDataset: GoldenEntry[];
+try {
+    if (caseIds) {
+        goldenDataset = getCasesByIds(caseIds);
+    } else {
+        goldenDataset = getAllCases(category);
+    }
+} catch (err) {
+    console.error((err as Error).message);
+    process.exit(1);
+}
 
 async function main() {
-    console.log(`🧪 Running golden dataset eval (${siteKey ?? "combined"}, ${goldenDataset.length} jobs)...`);
+    const scope = caseIds ? `cases: ${caseIds.join(", ")}` : category ? `category: ${category}` : "all categories";
+    console.log(`🧪 Running golden dataset eval (${scope}, ${goldenDataset.length} cases)...`);
     console.log(`   Model: ${modelConfig.model}`);
     console.log(`   Temperature: ${modelConfig.temperature}\n`);
 
@@ -54,7 +84,8 @@ async function main() {
         comparison,
         heuristics,
         goldenDataset,
-        site: siteKey,
+        category,
+        cases: caseIds,
     });
     console.log(`\n📄 Report saved: ${reportPath}`);
 

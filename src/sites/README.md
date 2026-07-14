@@ -6,6 +6,8 @@ Each job site is defined by a `SiteConfig<T extends BaseJob>` object that abstra
 - Job-summary prompt: [`src/pipeline/prompts/job-summary.md`](../pipeline/prompts/job-summary.md)
 - Evaluation schema: [`src/types/evaluated-job.ts`](../types/evaluated-job.ts)
 
+> **Eval redesign — crawlers are unaffected.** The per-site golden datasets that used to live under `src/sites/<site>/evals/` and the aggregator `src/evals/combined-golden-dataset.ts` were removed. Eval cases are now a **single, site-agnostic** rule-tagged library at `src/evals/cases/<category>.ts` (one file per `CaseCategory`, plus `index.ts`). Nothing in this directory's crawler / `SiteConfig` / dataset-convention story changed — only the eval golden data moved out from under `src/sites/`. Scope an eval run with `--category <name>` or `--cases id1,id2` instead of the old `--site` flag.
+
 ## SiteConfig Interface
 
 ```ts
@@ -58,7 +60,6 @@ Read results back via `store.getData()` (returns `{ items, ... }`) — do not `r
 |------|---------|
 | `index.ts` | SiteConfig definition. Defines a Zod schema for the `WuzzufJob` structure. |
 | `wuzzuf-crawler.ts` | Cheerio crawler targeting 4 search URLs (react, nextjs, vue, node). Extracts: jobTitle, jobURL, date, company, location, tags, jobDetails. Max 20 requests. |
-| `evals/wuzzuf-golden-dataset.ts` | 40 hand-labeled jobs (9 real + 31 synthetic) for evaluation. |
 | `prompts/filter.old.md` | Historical filter prompt kept for reference — **not used at runtime**. The active filter prompt lives at `src/pipeline/prompts/filter.md`. |
 | `prompts/report.old.md` | Historical report prompt kept for reference — **not used at runtime**. Reports are code-driven. |
 
@@ -68,7 +69,6 @@ Read results back via `store.getData()` (returns `{ items, ... }`) — do not `r
 |------|---------|
 | `index.ts` | SiteConfig definition. Defines a Zod schema for the `IndeedJob` structure. |
 | `indeed-crawler.ts` | Two-stage crawler using CheerioCrawler. Stage 1: Extract job cards from search page. Stage 2: Visit each job detail page for full description. Max 20 requests total. |
-| `evals/indeed-golden-dataset.ts` | 14 hand-labeled jobs (12 real + 2 synthetic) for evaluation. |
 
 **Key Differences from Wuzzuf:**
 
@@ -82,7 +82,6 @@ Read results back via `store.getData()` (returns `{ items, ... }`) — do not `r
 |------|---------|
 | `index.ts` | SiteConfig definition. Defines a Zod schema for the `WorkableJob` structure. |
 | `workable-crawler.ts` | Playwright crawler (Workable is a JS-heavy SPA that Cheerio can't render). Two-stage: search results → detail pages. Max 20 requests. |
-| `evals/workable-golden-dataset.ts` | Hand-labeled jobs for evaluation. |
 
 **Key Differences from Wuzzuf/Indeed:**
 
@@ -98,7 +97,7 @@ Read results back via `store.getData()` (returns `{ items, ... }`) — do not `r
 
 **Key Differences from the other sites:**
 
-- **No golden dataset yet** — LinkedIn is production-only. It can be crawled and filtered, but `pnpm eval --site linkedin` is rejected until a golden dataset ships and is registered in `goldenDatasetsBySite`. This is the intended decoupling: production is no longer gated on eval.
+- **Production-only** — LinkedIn can be crawled and filtered like any other site. Eval cases are no longer per-site (see the note below), so LinkedIn doesn't need a `src/sites/linkedin/evals/` directory; if a case derived from a LinkedIn job is needed, it goes in the unified library under `src/evals/cases/`. Production is not gated on eval.
 
 ## Adding a New Site
 
@@ -106,7 +105,7 @@ Read results back via `store.getData()` (returns `{ items, ... }`) — do not `r
 2. Create `<site-name>-crawler.ts` with a crawl function returning `Omit<YourJobType, "site">[]` using `CheerioCrawler` (or `PlaywrightCrawler` for JS-heavy SPAs, like Workable). **Do not stamp a `site` field** — `crawl()` derives it centrally from `SiteConfig.key`. **Follow the dataset convention above** — each crawler writes to its own named dataset (`Dataset.open("<site>")`), drops it at the start of each run, and reads back via `getData()`. Do not use the default `pushData` or read `storage/datasets/default` directly, or multi-site runs will cross-contaminate.
 3. Create `index.ts` exporting a `SiteConfig<YourJobType>` (define `YourJobType` in `src/types/`). Set `key` to the same lowercase string you'll use as the registry slot (it must match). Define `jobSchema` over the non-`site` fields only (`satisfies z.ZodType<Omit<YourJobType, "site">>`). Do **not** create any per-site prompt files — both the filter and job-summary prompts are shared site-wide at `src/pipeline/prompts/`.
 4. Import and register the new site config in `src/sites/registry.ts` (the shared `sites` map). The `key` must equal the registry slot (convention — `crawl.ts` stamps every job's `site` from `key`, so a mismatch mislabels all jobs and surfaces in reports). This single registration makes the site available to both `pnpm start <site>` (full pipeline) and `pnpm crawl <site>` (crawl-only dev tool).
-5. *(Optional but recommended)* Create `evals/<site-name>-golden-dataset.ts` with hand-labeled test jobs, then register it in `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts` so `pnpm eval` and `pnpm compare` pick it up (both the combined run and the `--site <name>` filter). A site works in production **without** this step — the golden dataset only gates eval benchmarking.
+5. *(Optional, and no longer per-site)* Golden eval cases are now unified and site-agnostic — they live in `src/evals/cases/<category>.ts`, not under `src/sites/<site>/evals/`. If you want to add a case sourced from the new site, append a `GoldenEntry` (with `category`, `id`, `real: true`, etc.) to the matching category file in `src/evals/cases/` instead of creating a per-site dataset. This step is purely for eval coverage; a site works in production **without** it.
 
 ## Testing a crawler in isolation
 

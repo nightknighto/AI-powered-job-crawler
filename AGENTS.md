@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Job search filtering system that crawls Wuzzuf and Indeed Egypt (job boards), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown/HTML reports via a composable reporter system. Includes a golden-dataset evaluation framework for benchmarking LLM filter accuracy across multiple models.
+Job search filtering system that crawls Wuzzuf and Indeed Egypt (job boards), filters listings through a local LLM (Ollama) using structured JSON output, and generates markdown/HTML reports via a composable reporter system. Includes a rule-tagged eval case library for benchmarking LLM filter accuracy across multiple models.
 
 ## Tech Stack & Conventions
 
@@ -32,11 +32,11 @@ Sites only describe **crawling** and the **raw job shape** — to add a site, im
 
 > The **filter prompt**, the **job-summary prompt**, and the **LLM-output evaluation schema** are intentionally **not** part of `SiteConfig`. They live in `src/pipeline/prompts.ts` (`filterPrompt`, `jobSummaryPrompt`) and `src/types/evaluated-job.ts` (`jobEvaluationSchema`) respectively, so filtering and summarizing behave identically across all sites.
 
-### `SiteKey` vs `GoldenSiteKey` (type hierarchy)
+### `SiteKey` (source of truth for job origin)
 
 `SiteKey` is the **source of truth** for `BaseJob.site`. It is derived directly from the production `sites` registry in `src/sites/registry.ts` (`export type SiteKey = keyof typeof sites`), so it covers every crawlable site — currently `'wuzzuf' | 'indeed' | 'workable' | 'jooble' | 'linkedin'`.
 
-`GoldenSiteKey` is the **eval subset** of `SiteKey`, defined in `src/evals/combined-golden-dataset.ts` as `Extract<SiteKey, keyof typeof goldenDatasetsBySite>`. It covers only sites that have a golden dataset (`'wuzzuf' | 'indeed' | 'workable' | 'jooble'`), and it's the type the `--site` CLI flag validates against. The dependency direction is **production → eval**: `BaseJob.site: SiteKey`, and `GoldenSiteKey` is a narrowing of it. Never invert this — production must not import from `src/evals/`.
+There used to be a `GoldenSiteKey` (an eval subset of `SiteKey`); it was removed when the eval system was unified. The eval case library is now **site-agnostic** — cases are organized by filter-rule category (`CaseCategory`), not by site. The dependency direction is still **production → eval**: `BaseJob.site: SiteKey` exists because production crawlers stamp it; eval cases declare it as a literal for traceability but no code branches on it. Never import from `src/evals/` into `src/types/` or `src/sites/`.
 
 ### Prompt templates with `{{placeholder}}` substitution
 
@@ -51,9 +51,11 @@ Both are loaded as plain-string constants by `src/pipeline/prompts.ts`.
 
 LLM output is validated by the shared `jobEvaluationSchema` in `src/types/evaluated-job.ts`. `z.toJSONSchema()` converts it to JSON Schema for Ollama's `structured_outputs` feature. Per-site schemas only validate raw job shape (`jobSchema`), never the LLM response.
 
-### Golden dataset for eval
+### Eval case library (rule-tagged, real-job-based)
 
-The combined golden dataset (54 hand-labeled jobs: 40 Wuzzuf + 14 Indeed; 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH) is aggregated by `src/evals/combined-golden-dataset.ts` from per-site files under `src/sites/<site>/evals/`. The `compareGolden()` function matches by URL and computes precision/recall/F1 per class.
+The eval benchmark is a single unified case library at `src/evals/cases/`, organized **one file per filter rule** (`title-seniority`, `internship`, `tech-stack`, `role-type`, `experience`, `location`, `ambiguous`, `multi-cause`). Each case is a `GoldenEntry` tagged with the ONE rule it isolates (`category: CaseCategory`), is **single-causal by construction** (every other filter kept green so only the target rule can trigger), and is sourced from a **real crawled job** wherever possible (`real: true`, fields copied verbatim from `storage/datasets/*.json`); synthetic gap-fillers (`real: false`) exist only for coverage no real job supplies (e.g. internship titles). `compareGolden()` matches by URL and reports **overall accuracy + per-category accuracy** — no F1/precision/recall, no keyword scoring (reasons are kept in the output for human inspection only). The per-category accuracy IS the eval-suite coverage: a low score in `experience` pinpoints exactly which rule the model mishandles.
+
+Case IDs are signal-descriptive slugs (`<category>-<unique-signal>[-status]`, e.g. `exp-threshold-4yr-fail`), never sequence numbers, so adding/removing a case never renumbers siblings. The `--category <name>` flag scopes a run to one rule file; `--cases id1,id2,...` cherry-picks specific cases.
 
 ### Model config pattern
 
@@ -88,7 +90,7 @@ Reporter keys are lowercase-hyphen strings registered in `src/reporters/index.ts
 
 For multi-site runs, crawl → evaluate loop **once per site** (small per-site filter prompts; one malformed LLM output only loses one site), with **skip-and-continue**: a failed site is logged and recorded in `ReportContext.skippedSites` rather than aborting the whole run. Evaluated results are merged, then **one** combined summary LLM call covers all passing jobs. Reporters run once over the merged set, producing a single unified report named after the run (`reports/all-<timestamp>.html`, `reports/wuzzuf-indeed-<timestamp>.html`, etc.). Each job's origin shows in a `Site` column; the report header lists the actual sites present (derived from job data).
 
-This relies on every job carrying a `site: SiteKey` field (see `BaseJob`). `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key` for production jobs; golden datasets declare it as a literal — so the eval path also carries `site` through (it appears in the prompt JSON as harmless read-only context; the LLM never outputs it, and `mergeJobsByUrl` reattaches the full original job by reference).
+This relies on every job carrying a `site: SiteKey` field (see `BaseJob`). `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key` for production jobs; eval cases declare it as a literal for traceability — so the eval path also carries `site` through (it appears in the prompt JSON as harmless read-only context; the LLM never outputs it, and `mergeJobsByUrl` reattaches the full original job by reference).
 
 ### Verdict cache (production only)
 
@@ -173,7 +175,7 @@ To add a new job board site:
 5. **Update exports** in `src/types/index.ts`:
    - Export the new site type (`SiteKey` is already re-exported there and widens automatically)
 
-6. *(Optional)* **Add golden dataset** in `src/sites/<site>/evals/<site>-golden-dataset.ts` and register it in the `goldenDatasetsBySite` map in `src/evals/combined-golden-dataset.ts` so `pnpm eval` / `pnpm compare` pick it up (both combined and `--site <name>`). Each golden job object must include `site: "<site>"` as a literal. **A site works in production without this step** — the golden dataset only gates eval benchmarking (`GoldenSiteKey` widens to include the new key automatically once registered).
+6. *(Optional)* **Contribute real jobs to the eval case library** — the eval cases are site-agnostic and organized by filter-rule category under `src/evals/cases/`, NOT per-site. If crawling the new site surfaces a real job that isolates a filter rule (e.g. an on-site-only location FAIL), copy it verbatim into the matching `cases/<category>.ts` file with a signal-descriptive `id` and `real: true`. **A site works in production without this step** — eval coverage is never a prerequisite for crawling/filtering.
 
 7. **Update documentation**:
    - `README.md` — Add site to quick start and pipeline description
@@ -188,9 +190,9 @@ src/
   main.ts                          — Entry point, orchestrates the full pipeline; first positional arg selects one site, `all`, or a comma-list (e.g. wuzzuf,indeed)
   crawl-dev.ts                     — Crawl-only dev tool (`pnpm crawl <site> [--verbose]`): runs ONLY the crawler and dumps raw jobs to reports/crawl-<site>-<ts>.json, skipping the LLM filter/summary/reporters. `--verbose` prints the full JSON of the first 10 jobs per site. Used when iterating on a crawler's extraction logic.
   config.ts                        — ModelConfig interface, modelConfigs map, shared settings
-  eval.ts                          — Single-model golden dataset evaluation runner
-  compare-models.ts                — Multi-model benchmark, ranks by PASS F1
-  compare-prompts.ts               — Prompt variant comparison runner (pnpm compare-prompts)
+  eval.ts                          — Single-model eval runner; `--category`/`--cases` scope the case set; 80% accuracy threshold gate
+  compare-models.ts                — Multi-model benchmark, ranks by overall accuracy
+  compare-prompts.ts               — Prompt variant comparison runner (pnpm compare-prompts); ranks by overall accuracy
   types/
     base.ts                        — BaseJob interface (jobTitle, jobURL, company, location, date, jobDetails[], site)
     WuzzufJob.ts                   — Extends BaseJob with company, location, tags
@@ -198,13 +200,13 @@ src/
     JoobleJob.ts                   — Extends BaseJob (no extra fields)
     evaluated-job.ts               — JobStatus enum, EvaluatedJob<T> type, shared jobEvaluationSchema (status, reason, experienceLevel?, skills?)
     site-config.ts                 — SiteConfig<T> interface (key: SiteKey, crawl → Omit<T,"site">[], jobSchema validates non-site fields)
-    GoldenEntry.ts                 — GoldenEntry<T> interface (job, expectedStatus, expectedReasonKeywords) for eval golden dataset
+    GoldenEntry.ts                 — GoldenEntry interface (id, category, real, job, expectedStatus, isolationNote) for eval case library; CaseCategory union
     index.ts                       — Re-exports all types
     WorkableJob.ts                 — Extends BaseJob (Workable-specific shape; currently no extra fields)
   pipeline/
     crawl.ts                       — Generic crawl orchestration via SiteConfig
     evaluate.ts                    — Production filter stage; thin wrapper around run-filter.ts (strict mode on unknown/duplicate URLs; dropped jobs collected non-fatally)
-    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenDataset) (used by evaluate.ts, eval.ts, compare-models.ts, compare-prompts.ts)
+    run-filter.ts                  — Shared filter pipeline: parseLlmOutput, logTimingAndTokens, mergeJobsByUrl, runFilterLLMCall, runFilterEval(modelKey, goldenCases) (used by evaluate.ts, eval.ts, compare-models.ts, compare-prompts.ts)
     generate-summary.ts            — LLM summary for passing jobs (returns string)
     report-helpers.ts              — Deterministic report tables (no LLM), date parsing, table formatting
     prompts.ts                     — Loads the shared filter + job-summary prompts from prompts/*.md and exports filterPrompt, jobSummaryPrompt
@@ -225,30 +227,35 @@ src/
     fixtures/
       sample-evaluated-jobs.ts     — 6 sample EvaluatedJob<WuzzufJob> for testing reporters
   evals/
-    combined-golden-dataset.ts     — goldenDatasetsBySite registry, GoldenSiteKey (eval subset of SiteKey), getGoldenDataset(site?) for eval/compare (combined by default, single-site via --site)
-    golden.ts                      — Golden dataset comparison engine (precision/recall/F1 per class)
-    structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, etc.)
-    report-writer.ts               — Writes eval/compare results to eval-results/ directory
+    cases/                         — Unified, site-agnostic eval case library (one file per filter rule)
+      title-seniority.ts           — Title Filter cases (Lead/Manager/Head of/Director/Principal/Staff)
+      internship.ts                — Internship Filter cases (synthetic — no real internship jobs exist)
+      tech-stack.ts                — Tech Stack Filter cases (JS/TS vs non-JS; secondary-language exception)
+      role-type.ts                 — Role Type Filter cases (QA/vendor-platform/data-engineer rejects)
+      experience.ts                — Experience Filter cases (≤3yr PASS, 4+yr FAIL, no-signals PASS, clean baseline)
+      location.ts                  — Location Filter cases (hybrid-non-Egypt, on-site)
+      ambiguous.ts                 — POTENTIAL_MATCH fallback cases (dual-stack, non-dev title, multi-backend)
+      multi-cause.ts               — Compound-rejection cases (2+ valid failures; status-only scoring)
+      index.ts                     — Assembles casesByCategory; getAllCases(category?), getCasesByIds(ids), casesById; duplicate-id guard
+    golden.ts                      — compareGolden(): per-category accuracy (overall + per CaseCategory); no F1/precision/recall; reasons inspection-only
+    structural.ts                  — 6 heuristic checks (dropped jobs, valid statuses, title/internship consistency, etc.)
+    report-writer.ts               — Writes eval/compare/compare-prompts results to eval-results/ (per-category accuracy tables)
   sites/
-    registry.ts                    — Single source of truth for the `sites` map + `SiteKey` type (derived via `keyof typeof sites`). Imported by main.ts, crawl-dev.ts, and type-only by base.ts/site-config.ts. Register new sites here. Each config's `key` must match its slot (convention — central stamping in crawl.ts makes a mismatch obvious in reports).
+    registry.ts                    — Single source of truth for the `sites` map + `SiteKey` type (derived via `keyof typeof sites`). Imported by main.ts, crawl-dev.ts, and type-only by base.ts/site-config.ts. Register new sites here. Each config's `key` must match its slot (convention — centralstamping in crawl.ts makes a mismatch obvious in reports).
     wuzzuf/
       index.ts                     — SiteConfig for Wuzzuf
       wuzzuf-crawler.ts            — Cheerio crawler, 4 search URLs, max 20 requests
-      evals/wuzzuf-golden-dataset.ts — 40 hand-labeled jobs (13 PASS, 26 FAIL, 1 POTENTIAL_MATCH)
       prompts/filter.old.md        — Historical per-site filter prompt, kept for reference (not loaded at runtime)
       prompts/report.old.md        — Historical per-site report prompt, kept for reference (not loaded at runtime)
     indeed/
       index.ts                     — SiteConfig for Indeed Egypt
       indeed-crawler.ts            — Two-stage crawler (search + detail pages), max 20 requests
-      evals/indeed-golden-dataset.ts — 14 hand-labeled jobs (2 PASS, 12 FAIL)
     workable/
       index.ts                     — SiteConfig for Workable
       workable-crawler.ts          — Playwright crawler (JS-heavy SPA), max 20 requests
-      evals/workable-golden-dataset.ts — Hand-labeled jobs for Workable
     jooble/
       index.ts                     — SiteConfig for Jooble
       jooble-crawler.ts            — Playwright crawler, max 20 requests
-      evals/jooble-golden-dataset.ts — Hand-labeled jobs for Jooble (currently empty)
     linkedin/
       index.ts                     — SiteConfig for LinkedIn (uses BaseJob directly — no site-specific fields)
       linkedin-crawler.ts          — Cheerio crawler, seed page enqueues detail pages, max 30 requests
@@ -318,7 +325,7 @@ Each accomplishment should follow this pattern:
 
 ## Never Change Without Explicit Request
 
-- **Golden dataset labels** — 54 hand-labeled jobs aggregated by `src/evals/combined-golden-dataset.ts` from `src/sites/<site>/evals/<site>-golden-dataset.ts`; these are the ground truth
+- **Eval case labels** — hand-labeled cases in `src/evals/cases/<category>.ts`, each tagged with the one rule it isolates and its expected status; these are the ground truth
 - **Filter rules** in `src/pipeline/prompts/filter.md` — these define "correct" behavior
 - **Structural heuristic checks** in `src/evals/structural.ts` — these are rule-based, not AI-generated
 
@@ -327,11 +334,12 @@ Each accomplishment should follow this pattern:
 - **Import paths must use `.js` extension** even for `.ts` files (Node16 module resolution)
 - **Zod v4 API differences from v3** — use `z.toJSONSchema()` not `zodToJsonSchema()`, and note other v4 breaking changes
 - **`marked.use(markedTerminal())`** needs `@ts-ignore` — types are mismatched but it works at runtime
-- **Golden dataset job matching is by URL** — synthetic/test jobs must use unique fake URLs
-- **Wuzzuf golden jobs are numbered #1–#40 in comments** — keep numbering in sync when adding/removing jobs
-- **Combined dataset is widened to `GoldenEntry<BaseJob>`** — per-site files preserve their concrete type (`GoldenEntry<WuzzufJob>` etc.) but the `goldenDatasetsBySite` registry widens to the base type so `getGoldenDataset()` returns `GoldenEntry[]`
-- **Every job carries `site: SiteKey`** — a required field on `BaseJob`, typed as `SiteKey` (derived from the production `sites` registry in `src/sites/registry.ts`). Crawlers do **not** stamp it — they return `Omit<T, "site">[]` and `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key`. Golden datasets still declare `site` as a literal. There is no `siteKeySchema` anymore (removed when `site` became centrally stamped); per-site `jobSchema`s validate only the non-`site` fields.
-- **`GoldenSiteKey` is the eval subset of `SiteKey`** — defined in `src/evals/combined-golden-dataset.ts` as `Extract<SiteKey, keyof typeof goldenDatasetsBySite>`. It covers only sites with a golden dataset. The dependency is **production → eval** (`BaseJob.site: SiteKey`, `GoldenSiteKey` narrows it); never invert it by importing from `src/evals/` into `src/types/` or `src/sites/`. A site can be crawled/filtered without a golden dataset (e.g. `linkedin`); it just can't be `--site`-benchmarked until one ships.
+- **Eval case matching is by URL** — synthetic gap-filler cases must use unique fake URLs (e.g. `https://eval.synthetic/<id>`); real cases keep their original real jobURL
+- **Case IDs are signal-descriptive slugs, NOT sequence numbers** — format `<category>-<unique-signal>[-status]` (e.g. `exp-threshold-4yr-fail`). Adding/removing a case never renumbers siblings. `cases/index.ts` throws at load time on a duplicate ID.
+- **Cases are single-causal by construction** — each case isolates exactly ONE filter rule (every other filter kept green). When adding a case, verify only the target rule can trigger. The `multi-cause` category is the deliberate exception (2+ valid failures, status-only scoring, no reason assertion).
+- **Reasons are inspection-only** — `compareGolden()` never keyword-matches or scores the model's `reason[]`. The text is kept in `PerJobResult.reasonText` for human investigation of failures. Per-category accuracy already pinpoints which rules a model mishandles.
+- **Every job carries `site: SiteKey`** — a required field on `BaseJob`, typed as `SiteKey` (derived from the production `sites` registry in `src/sites/registry.ts`). Crawlers do **not** stamp it — they return `Omit<T, "site">[]` and `src/pipeline/crawl.ts` stamps it centrally from `SiteConfig.key`. Eval cases declare `site` as a literal for traceability, but no code branches on it (the eval case library is site-agnostic). There is no `siteKeySchema` anymore; per-site `jobSchema`s validate only the non-`site` fields.
+- **No `GoldenSiteKey` anymore** — it was removed when the eval system was unified. Eval cases are scoped by `--category <name>` (a `CaseCategory`) or `--cases id1,id2`, never by site.
 - **`ReportContext.site` was replaced by `siteName: string`** — reporters no longer receive a full `SiteConfig` (there's no single config for an `all` run). For per-job origin read `job.site`; for the run label use `ctx.siteName`. Failed sites in a multi-site run surface via `ctx.skippedSites`; jobs the LLM dropped surface via `ctx.droppedJobs`.
 - **Dropped jobs are non-fatal and surfaced in the report** — when the LLM omits some input URLs from its filter output, `mergeJobsByUrl` no longer throws (even in strict mode); it collects the dropped jobs and threads them to `ReportContext.droppedJobs`, which reporters render as a "Dropped by LLM" section. Only unknown/hallucinated and duplicate URLs still throw in strict mode.
 - **`storage/` directory** is Crawlee internal state, gitignored, regenerated on each crawl
@@ -352,14 +360,16 @@ Each accomplishment should follow this pattern:
 
 ## Eval Methodology
 
-- **Primary metric**: PASS F1 (minority class, hardest to get right)
-- **Accuracy threshold**: 80%
+- **Primary metric**: overall accuracy, broken down per filter-rule category. No F1 / precision / recall — the per-category breakdown pinpoints which rules a model mishandles in plain English (e.g. "Experience rules 100%, Location rules 67%").
+- **Accuracy threshold**: 80% on overall accuracy (`eval.ts` exits 1 below it).
+- **Reasons are inspection-only** — the model's `reason[]` is never keyword-matched or scored. It's kept in the per-case output so you can read WHY a case failed, but it doesn't affect any score.
 - Models are configured in `src/config.ts` — the set can change at any time, check the file for current keys
-- `pnpm compare` runs all configured models and ranks by PASS F1
-- `pnpm eval <model>` runs a single model (by its config key) against the golden dataset
-- `pnpm compare-prompts <model>` runs prompt variant comparison for a given model against all variants in `src/pipeline/prompts/variants/`
+- `pnpm eval <model>` runs a single model (by its config key) against the case library (all categories by default)
+- `pnpm eval <model> --category <name>` scopes to one rule category (`title-seniority` | `internship` | `tech-stack` | `role-type` | `experience` | `location` | `ambiguous` | `multi-cause`)
+- `pnpm eval <model> --cases id1,id2,...` cherry-picks specific cases by ID
+- `pnpm compare` runs all configured models and ranks by overall accuracy (accepts `--category` / `--cases` too)
+- `pnpm compare-prompts <model>` runs prompt variant comparison for a given model against all variants in `src/pipeline/prompts/variants/`, ranks by overall accuracy
 - `pnpm compare-prompts <model> --variants v1,v2` runs only the specified custom variants (+ baseline), skipping the rest
-- **`--site <name>`** scopes either script to one site's golden dataset (`wuzzuf` | `indeed` | `workable`) instead of the combined dataset — e.g. `pnpm eval qwenReason --site indeed`. Valid keys are the entries of `goldenDatasetsBySite` in `src/evals/combined-golden-dataset.ts`
-- **Both scripts share the same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in `src/pipeline/run-filter.ts` — the caller resolves the dataset via `getGoldenDataset(site?)` and passes it in; `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
+- **Both scripts share the same filter pipeline** via `runFilterEval(modelKey, goldenCases)` in `src/pipeline/run-filter.ts` — the caller resolves the cases via `getAllCases(category?)` / `getCasesByIds(ids)` from `src/evals/cases/index.ts` and passes them in; `compare-models.ts` is literally "run `eval` on every configured model and rank the results", not a parallel implementation
 - **The verdict cache does NOT affect evals** — `eval.ts`, `compare-models.ts`, and `compare-prompts.ts` call `runFilterEval` directly and never construct a `VerdictCache`. Only `main.ts` (the production pipeline) uses the cache. So eval results are deterministic across runs regardless of cache state.
 - **Strict vs tolerant**: the production pipeline (`evaluate.ts`) calls `runFilterLLMCall(..., { mode: 'strict' })` which throws on **unknown or duplicate** URLs (genuine LLM malfunction); eval scripts use `'tolerant'` mode (warn and continue) so noisy LLM output can still be scored. **Dropped jobs are always non-fatal** regardless of mode: input URLs the LLM omitted are collected into a `dropped` array and surfaced in the report (`ReportContext.droppedJobs`), so a common LLM hiccup no longer throws away an entire site's worth of results. The `checkNoDroppedJobs` structural heuristic (used in eval) independently logs drops for scoring.

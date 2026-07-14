@@ -1,142 +1,112 @@
 # Eval System
 
-Evaluation framework for benchmarking LLM filter accuracy against hand-labeled data and structural heuristics.
+Evaluation framework for benchmarking LLM filter accuracy against hand-labeled cases and structural heuristics.
 
-The eval pipeline is **fully unified across all sites**: it consumes a single combined golden dataset, the shared `filterPrompt`, and the shared `jobEvaluationSchema`. There is no per-site filter prompt or evaluation schema.
+The eval pipeline is **fully unified across all sites**: it consumes a single rule-tagged case library, the shared `filterPrompt`, and the shared `jobEvaluationSchema`. There is no per-site filter prompt, evaluation schema, or golden dataset.
+
+## Design principles
+
+1. **Real jobs first.** ~80% of cases are sourced verbatim from real crawled jobs (`storage/datasets/*.json`) or historical `realJobs`. Synthetic cases exist only to fill coverage gaps no real job supplies (e.g. internship titles).
+2. **Single-causal by construction.** Each case isolates exactly one filter rule — every OTHER filter is kept green so only the target rule can trigger. This makes per-category accuracy directly diagnostic: a low score in one category pinpoints exactly which rule the model mishandles.
+3. **Plain-English scoring.** Overall accuracy + per-category accuracy. No F1 / precision / recall — those were computed but carried no weight and added jargon without value.
+4. **Reasons are inspection-only.** The model's `reason[]` text is kept in the output for human investigation of failures, but it is NEVER keyword-matched or scored. The per-category accuracy already pinpoints which rules fail.
+
+## Case library (`cases/`)
+
+One file per filter rule, so dropping in a new case means opening the right file:
+
+```
+src/evals/cases/
+  title-seniority.ts   — Title Filter (Senior/Lead/Manager/Head of/Director/Principal/Staff)
+  internship.ts        — Internship Filter
+  tech-stack.ts        — Tech Stack Filter (JS/TS ecosystem vs non-JS)
+  role-type.ts         — Role Type Filter (dev roles vs QA/PM/vendor-platform)
+  experience.ts        — Experience Filter (≤3yr PASS, 4+yr FAIL)
+  location.ts          — Location Filter (remote/hybrid-Egypt PASS, onsite/hybrid-non-Egypt FAIL)
+  ambiguous.ts         — POTENTIAL_MATCH fallback (dual-stack, non-dev titles, multi-backend)
+  multi-cause.ts       — Compound-rejection jobs (2+ valid failure reasons; status-only scoring)
+  index.ts             — assembles all files, exports getAllCases / getCasesByIds / casesById
+```
+
+Each case has the shape (see `src/types/GoldenEntry.ts`):
+
+```ts
+{
+  id: string;              // signal-descriptive slug, e.g. "exp-threshold-4yr-fail"
+  category: CaseCategory;  // the one rule this case isolates (= its file)
+  real: boolean;           // true if sourced from a real crawled job
+  job: BaseJob;            // the job to feed the LLM (minimal shape, no `tags`)
+  expectedStatus: JobStatus;
+  isolationNote: string;   // what signal this case isolates (shown in report on mismatch)
+}
+```
+
+### Case IDs
+
+IDs are signal-descriptive slugs: `<category>-<what-makes-this-case-unique>[-status]` (e.g. `exp-threshold-4yr-fail`, `role-qa-junior-fail`, `ambig-dualstack-pm`). The suffix describes the case's signal — never a sequence number — so adding or removing a sibling case never forces a renumber. IDs must be globally unique; `cases/index.ts` throws at load time on a duplicate.
+
+### Sourcing a new case from a real job
+
+1. Run `pnpm crawl <site>` to refresh `storage/datasets/<site>/`.
+2. Find a real job that isolates ONE rule (every other filter green).
+3. Copy its fields verbatim into the matching `cases/<category>.ts` file — full `jobDetails` text untruncated (that's what the LLM filters on). Set `real: true`.
+4. Give it a signal-descriptive `id` and write an `isolationNote` documenting which filters are deliberately green.
+
+Only fall back to a synthetic case (`real: false`, `jobURL: "https://eval.synthetic/<id>"`) when no real job supplies the needed signal.
 
 ## Components
 
-### 1. Golden Dataset Comparison (`golden.ts`)
+### 1. Golden Comparison (`golden.ts`)
 
-Compares AI-evaluated jobs against a hand-labeled golden dataset.
+`compareGolden(dataset, aiOutput)` matches cases by `jobURL`, checks status correctness, and rolls accuracy up per category.
 
-**`PerJobResult` interface:**
+**`PerJobResult` fields:** `id`, `category`, `jobTitle`, `jobURL`, `expectedStatus`, `actualStatus`, `statusMatch`, `dropped`, `reasonText` (inspection only), `isolationNote`, `real`.
 
-| Field | Description |
-|-------|-------------|
-| `jobIndex` | 1-based index into the combined dataset |
-| `jobTitle` | Job title |
-| `jobURL` | Job URL (used for matching) |
-| `expectedStatus` | Golden dataset status |
-| `actualStatus` | AI-determined status |
-| `statusMatch` | Whether expected === actual |
-| `dropped` | Whether the AI didn't include this job at all |
-| `expectedKeywords` | Keywords expected in reason text |
-| `matchedKeywords` | Keywords found in AI reason |
-| `unmatchedKeywords` | Expected keywords not found |
-| `reasonText` | Full AI reason text |
+**`GoldenComparisonResult`:** `perJob[]`, `overallAccuracy`, `categoryMetrics` (`Record<CaseCategory, { correct, total, accuracy }>`), `summary`.
 
-**`compareGolden()`** — Takes golden dataset + AI results, matches by `jobURL`, computes per-job results.
-
-**Metrics computed:** Precision, recall, F1 per class (`PASS`, `FAIL`, `POTENTIAL_MATCH`), overall accuracy.
-
-> **Primary metric: PASS F1** — PASS is the minority class (15/54) and hardest to get right.
-
-**Keyword checking:** For each golden entry, checks if `expectedReasonKeywords` appear in the AI's reason text (case-insensitive).
+**Scoring is status-only.** Keyword matching was removed entirely — it carried zero weight and couldn't distinguish a correct verdict citing a different valid reason from a wrong one. Per-category accuracy replaces it: a low score in `experience` means the model mishandles the experience rule, full stop.
 
 ### 2. Structural Heuristics (`structural.ts`)
 
-6 rule-based checks that don't depend on the golden dataset:
+6 rule-based checks independent of the golden cases:
 
 | # | Check | Description |
 |---|-------|-------------|
 | 1 | `checkNoDroppedJobs` | AI should not return fewer jobs than input |
 | 2 | `checkValidStatuses` | Only PASS/FAIL/POTENTIAL_MATCH allowed |
 | 3 | `checkNonEmptyReasons` | Every job must have at least one reason string |
-| 4 | `checkTitleFilterConsistency` | "Senior"/"Lead" etc. in title → FAIL (unless description overrides) |
+| 4 | `checkTitleFilterConsistency` | Lead/Manager/Head of/Director/Principal/Staff in title → FAIL (NOTE: "senior" is intentionally excluded — seniority is enforced via the Experience Filter + 2-3yr exception per `filter.md`, not the title keyword) |
 | 5 | `checkInternshipFilterConsistency` | "Intern" in title → FAIL |
 | 6 | `checkNoEmptyFields` | No empty strings in job title, URL, or reasons |
 
 ### 3. Report Writer (`report-writer.ts`)
 
-Writes eval results to the `eval-results/` directory as markdown files:
+Writes eval results to `eval-results/` as markdown:
 
-- **`writeEvalReport()`** — Writes a single-model eval report with per-job comparison, class metrics table, and heuristic results
-- **`writeCompareReport()`** — Writes a multi-model comparison report ranking all models by PASS F1
-- Timestamps are included in filenames for easy comparison over time
+- **`writeEvalReport()`** — single-model report: per-category accuracy table, heuristics, per-case breakdown (with id, isolationNote, model reason marked "inspection only").
+- **`writeCompareReport()`** — multi-model comparison ranked by overall accuracy.
+- **`writePromptCompareReport()`** — prompt-variant comparison ranked by overall accuracy, with timing/token columns.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `pnpm eval <model>` | Run golden eval + structural heuristics for one model against the combined dataset (default). Pass `--print-failed-only` to print only mismatches. Exit code 1 if accuracy < 80%. |
-| `pnpm eval <model> --site <name>` | Scope the eval to one site's golden dataset (`wuzzuf` \| `indeed` \| `workable`). The report filename and header reflect the selected site. Only sites with a golden dataset are accepted — production-only sites (e.g. `linkedin`) are rejected. |
-| `pnpm compare` | Run eval for all configured models, print ranked comparison table sorted by PASS F1. |
-| `pnpm compare --site <name>` | Same, scoped to one site's golden dataset. |
+| `pnpm eval <model>` | Run all cases for one model. Exit 1 if accuracy < 80%. `--print-failed-only` prints only mismatches. |
+| `pnpm eval <model> --category <name>` | Scope to one rule category (`title-seniority` \| `internship` \| `tech-stack` \| `role-type` \| `experience` \| `location` \| `ambiguous` \| `multi-cause`). |
+| `pnpm eval <model> --cases id1,id2,...` | Cherry-pick specific cases by ID. |
+| `pnpm compare` | Run all configured models, rank by overall accuracy. Accepts `--category` / `--cases` too. |
+| `pnpm compare-prompts <model>` | Run all prompt variants for a model, rank by overall accuracy. Accepts `--category` / `--cases` / `--variants`. |
+
+`--category` and `--cases` can be combined with any runner. `--cases` wins if both are given.
 
 ## Implementation Details
 
-The evaluation script ([`src/eval.ts`](../eval.ts)) and benchmark script ([`src/compare-models.ts`](../compare-models.ts)) share the **same filter pipeline** via `runFilterEval(modelKey, goldenDataset)` in [`src/pipeline/run-filter.ts`](../pipeline/run-filter.ts). `compare-models.ts` is literally "run `eval` on every configured model and rank the results" — not a parallel implementation.
+All three runners share the same filter pipeline via `runFilterEval(modelKey, goldenDataset, prompt?)` in `src/pipeline/run-filter.ts`. The caller resolves the case set via `getAllCases(category?)` / `getCasesByIds(ids)` from `src/evals/cases/index.ts` and passes it in.
 
-The caller (not the pipeline) decides which dataset to evaluate. Both scripts resolve it with `getGoldenDataset(site?)`:
+`runFilterEval` calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` — tolerant mode warns (rather than throws) on unknown/duplicate/dropped URLs so noisy LLM output can still be scored. It then runs `compareGolden()` and `runStructuralHeuristics()`.
 
-- No `--site` flag → the **combined** dataset (default, all sites).
-- `--site <name>` → only that site's golden dataset (`wuzzuf` | `indeed` | `workable`).
-
-The resolved array is passed both to `runFilterEval` and to the report-writer, so the report filename/header reflect the scope (e.g. `2026-06-25_qwenReason_site-indeed.md` with a `Site: indeed` header).
-
-`runFilterEval` internally:
-
-- Calls `runFilterLLMCall(jobs, modelConfig, { mode: "tolerant" })` on the jobs from the supplied golden dataset, which:
-  - Builds the filter prompt from the shared [`src/pipeline/prompts.ts`](../pipeline/prompts.ts) (`filterPrompt` ← `src/pipeline/prompts/filter.md`)
-  - Calls Ollama with the shared [`jobEvaluationSchema`](../types/evaluated-job.ts) for structured output
-  - Parses and merges results in `'tolerant'` mode (warns on unknown/duplicate/dropped URLs instead of throwing, so noisy LLM output can still be scored)
-- Runs the generic [`compareGolden()`](golden.ts) and [`runStructuralHeuristics()`](structural.ts) and returns `{ aiOutput, comparison, heuristics }`
-
-Each caller then handles its own UX: `eval.ts` prints verbose per-job results and exits 1 below 80% accuracy; `compare-models.ts` prints a rankings table sorted by PASS F1 and writes a comparison report.
-
-The production pipeline ([`src/pipeline/evaluate.ts`](../pipeline/evaluate.ts)) uses the **same** `runFilterLLMCall` but in `'strict'` mode (throws on bad URLs) — see [`src/pipeline/README.md`](../pipeline/README.md).
-
-This unified approach means:
-
-- One filter pipeline, three callers (production eval, single-model eval, multi-model benchmark)
-- Zero duplication — any change to the LLM call, prompt, schema, or merge logic lands in exactly one place
-- Easy to add new sites — drop a new `<site>-golden-dataset.ts` file and register it in `goldenDatasetsBySite` (`src/evals/combined-golden-dataset.ts`)
-- Consistent evaluation across all job boards
-
-## Golden Dataset
-
-Aggregated by [`src/evals/combined-golden-dataset.ts`](combined-golden-dataset.ts). The per-site datasets are registered in the `goldenDatasetsBySite` map; `getGoldenDataset(site?)` returns either the combined dataset (default) or a single site's dataset (for `--site <name>`).
-
-`GoldenSiteKey` is the **eval subset** of the production `SiteKey` union (defined in `src/sites/registry.ts`) — it covers only the sites that have a golden dataset (`'wuzzuf' | 'indeed' | 'workable' | 'jooble'`), so a production-only site like `linkedin` is crawled but not eval-benchmarked until it ships a golden dataset. The `--site` flag validates against `goldenDatasetsBySite`, not the production registry.
-
-| File | Jobs | Source |
-|------|------|--------|
-| [`src/sites/wuzzuf/evals/wuzzuf-golden-dataset.ts`](../sites/wuzzuf/evals/wuzzuf-golden-dataset.ts) | 40 (9 real + 31 synthetic) | Mix of real crawled jobs and synthetic test cases |
-| [`src/sites/indeed/evals/indeed-golden-dataset.ts`](../sites/indeed/evals/indeed-golden-dataset.ts) | 14 (12 real + 2 synthetic) | Representative jobs from Indeed Egypt |
-| **Combined** | **54** | 15 PASS, 38 FAIL, 1 POTENTIAL_MATCH |
-
-Each entry has the shape `{ job: T extends BaseJob, expectedStatus: JobStatus, expectedReasonKeywords: string[] }` (see the `GoldenEntry<T>` type in [`src/types/GoldenEntry.ts`](../types/GoldenEntry.ts)).
-
-Wuzzuf entries are numbered **#1–#40** in comments. Indeed entries are unnumbered. When adding/removing jobs, keep the Wuzzuf numbering in sync.
-
-### Filter Rule Coverage
-
-The combined dataset tests every filter rule:
-
-- **Seniority**: Jobs with Senior, Lead, Manager, Head of, Director, Principal, Staff in titles
-- **Experience**: Jobs with 3+ years (PASS) and 4+ years (FAIL)
-- **Tech Stack**: JS/TS ecosystems (React, Next.js, Vue, Angular, Node.js) vs. non-JS (Python, Java, PHP, .NET, etc.)
-- **Role Type**: Dev roles vs. PM, Designer, QA, Data Analyst, SEO, Facilities
-- **Location**: Remote (anywhere OK), Hybrid (Egypt only), On-site (FAIL), non-Egypt remote (OK)
-- **Internship**: Jobs with "Intern" in title or description
-- **Edge Cases**: Ambiguous stacks, senior titles with 2-3yr exceptions, mid-level titles, Arabic descriptions
-
-### Cross-Site Compatibility
-
-By including jobs from both Wuzzuf and Indeed, the dataset ensures the filter evaluation is:
-
-- **Not site-specific**: Works with any job board that implements the crawler interface
-- **Schema-independent**: Site-specific golden files preserve their full type (e.g. `GoldenEntry<WuzzufJob>`), but the combined dataset widens to `GoldenEntry<BaseJob>` so the comparison engine is generic
-- **Comprehensive**: Covers diverse job descriptions and formatting across sites
-- **Maintainable**: One per-site file + one aggregator = single source of truth, no duplication
+The production pipeline (`src/pipeline/evaluate.ts`) uses the same `runFilterLLMCall` but in `'strict'` mode — see `src/pipeline/README.md`.
 
 ## Adding New Heuristics
 
-Add a function with this signature:
-
-```ts
-(jobs: EvaluatedJob[], rawJobs: BaseJob[]) => string | null
-```
-
-Returns an error message string if the check fails, or `null` if it passes. Import and add to the checks array in `structural.ts`.
+Add a function with the signature `(input: BaseJob[], output: EvaluatedJob[]) => HeuristicResult` to `structural.ts` and register it in the checks array.
