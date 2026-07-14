@@ -120,6 +120,17 @@ async function main() {
         process.exit(1);
     }
 
+    // A 0-case selection (e.g. an empty category) would waste N LLM calls (one per
+    // model) and render a meaningless ranking — bail out early.
+    if (goldenDataset.length === 0) {
+        console.error(
+            `No cases selected${category ? ` for category "${category}"` : ""}. ` +
+            `That category currently has no cases; pick another category or omit --category.\n` +
+            `Available categories: ${availableCategories}`,
+        );
+        process.exit(1);
+    }
+
     const scope = caseIds ? `cases: ${caseIds.join(", ")}` : category ? `category: ${category}` : "all categories";
     console.log(`🔄 Running eval for ${models.length} models on ${scope} (${goldenDataset.length} cases)...\n`);
 

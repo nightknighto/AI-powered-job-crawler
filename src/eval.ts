@@ -60,8 +60,19 @@ try {
     } else {
         goldenDataset = getAllCases(category);
     }
-} catch (err) {
+    } catch (err) {
     console.error((err as Error).message);
+    process.exit(1);
+}
+
+// A 0-case selection (e.g. `--category ambiguous` while that category is empty)
+// would waste an LLM call and render a meaningless report — bail out early.
+if (goldenDataset.length === 0) {
+    console.error(
+        `No cases selected${category ? ` for category "${category}"` : ""}. ` +
+        `That category currently has no cases; pick another category or omit --category.\n` +
+        `Available categories: ${availableCategories}`,
+    );
     process.exit(1);
 }
 
